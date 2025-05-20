@@ -35,9 +35,8 @@ import connectDB from '../database/db.js';
 const DOCKER_IMAGE_MAP = {
   cpp: 'execution-engine/cpp:latest',
   java: 'execution-engine/java:latest',
-  python: 'execution-engine/python:latest',
-  javascript: 'execution-engine/javascript:latest',
-  c: 'execution-engine/c:latest',
+  javascript: 'execution-engine/node:latest',
+  
 };
 
 const REDIS_CONNECTION_OPTIONS_FOR_WORKER = {
