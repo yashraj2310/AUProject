@@ -1,13 +1,14 @@
+// --- Load Environment Variables from root ---
 import dotenv from 'dotenv';
 import path from 'path';
-import { fileURLToPath, pathToFileURL } from 'url'; 
+import { fileURLToPath, pathToFileURL } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
-console.log("WORKER ENV: Loaded MONGO_URI:", process.env.MONGO_URI ? "OK (value not shown for security)" : "MISSING!");
+console.log("WORKER ENV: Loaded MONGO_URI:", process.env.MONGO_URI ? "OK (value not shown)" : "MISSING!");
 console.log("WORKER ENV: Loaded REDIS_HOST:", process.env.REDIS_HOST || '127.0.0.1');
 console.log("WORKER ENV: Loaded REDIS_PORT:", process.env.REDIS_PORT || '6379');
 console.log("WORKER ENV: Loaded DOCKER_CONTAINER_UID:", process.env.DOCKER_CONTAINER_UID || '1001');
@@ -23,7 +24,7 @@ import IORedis from 'ioredis';
 import { Worker } from 'bullmq';
 
 // --- Mongoose & Models ---
-import mongoose from 'mongoose'; // Import mongoose itself for connection events
+import mongoose from 'mongoose';
 import { Submission } from '../models/submission.model.js';
 import { Problem } from '../models/problem.model.js';
 
@@ -34,6 +35,9 @@ import connectDB from '../database/db.js';
 const DOCKER_IMAGE_MAP = {
   cpp: 'execution-engine/cpp:latest',
   java: 'execution-engine/java:latest',
+  python: 'execution-engine/python:latest',
+  javascript: 'execution-engine/javascript:latest',
+  c: 'execution-engine/c:latest',
 };
 
 const REDIS_CONNECTION_OPTIONS_FOR_WORKER = {
@@ -43,6 +47,7 @@ const REDIS_CONNECTION_OPTIONS_FOR_WORKER = {
   enableReadyCheck: false,
 };
 
+// --- Helper Functions ---
 const getCodeFileName = (language) => {
   switch (language.toLowerCase()) {
     case 'cpp': return 'Main.cpp';
@@ -64,47 +69,112 @@ const cleanupTempDir = async (dirPath) => {
   }
 };
 
+function toDockerMountPath(winPath) {
+  if (process.platform !== 'win32') {
+    return winPath;
+  }
+  let drive = winPath[0].toLowerCase();
+  let tail = winPath.slice(2).replace(/\\/g, '/');
+  if (winPath[1] !== ':') {
+    console.warn(`toDockerMountPath: Received possibly non-standard Windows path: ${winPath}. Attempting direct use.`);
+    return winPath;
+  }
+  return `/${drive}${tail}`;
+}
+
 const executeSingleTestCaseInDocker = async (language, code, stdin, timeLimitSec, memoryLimitKB, submissionIdForLog) => {
-    let tempDir = null;
+    let tempDirHostOs = null;
     console.log(`WORKER_DEBUG (${submissionIdForLog}): Entered executeSingleTestCaseInDocker for lang ${language}`);
     try {
-        tempDir = await fs.mkdtemp(path.join(os.tmpdir(), `sub-${submissionIdForLog.toString().slice(-6)}-exec-`));
-      
-        const codeFileName = getCodeFileName(language);
-        const codeFilePath = path.join(tempDir, codeFileName);
-        const inputFilePath = path.join(tempDir, 'input.txt');
+        // Option 1: Use os.tmpdir()
+        tempDirHostOs = await fs.mkdtemp(path.join(os.tmpdir(), `sub-${submissionIdForLog.toString().slice(-6)}-exec-`));
+        
+        // Option 2: Use a fixed root like C:\MyDockerJudgeTests (uncomment to use)
+        // const hostTestRoot = 'C:\\MyDockerJudgeTests'; 
+        // await fs.mkdir(hostTestRoot, { recursive: true });
+        // const uniqueSubDirName = `sub-${submissionIdForLog.toString().slice(-6)}-${Date.now()}`;
+        // tempDirHostOs = path.join(hostTestRoot, uniqueSubDirName);
+        // await fs.mkdir(tempDirHostOs, { recursive: true });
+        
+        console.log(`WORKER_DEBUG (${submissionIdForLog}): Created host tempDir: ${tempDirHostOs}`);
 
+        const codeFileName = getCodeFileName(language);
+        const codeFilePath = path.join(tempDirHostOs, codeFileName);
+        const inputFilePath = path.join(tempDirHostOs, 'input.txt');
+
+        console.log(`WORKER_DEBUG (${submissionIdForLog}): Attempting to write code to: ${codeFilePath}`);
         await fs.writeFile(codeFilePath, code);
+        console.log(`WORKER_SUCCESS (${submissionIdForLog}): Successfully wrote code to ${codeFilePath}`);
+        
+        try {
+            const writtenCode = await fs.readFile(codeFilePath, 'utf8');
+            console.log(`WORKER_VERIFY (${submissionIdForLog}): Content of ${codeFilePath} (first 100 chars):\n${writtenCode.substring(0,100)}...`);
+        } catch (readErr) {
+            console.error(`WORKER_ERROR (${submissionIdForLog}): Failed to read back code file ${codeFilePath}:`, readErr);
+        }
+
+        console.log(`WORKER_DEBUG (${submissionIdForLog}): Attempting to write stdin to: ${inputFilePath}`);
         await fs.writeFile(inputFilePath, stdin || '');
+        console.log(`WORKER_SUCCESS (${submissionIdForLog}): Successfully wrote stdin to ${inputFilePath}`);
+
+        // --- TEMPORARY PAUSE FOR MANUAL INSPECTION ---
+        console.log(`WORKER_PAUSE (${submissionIdForLog}): Pausing for 15 seconds. Check directory: ${tempDirHostOs}`);
+        await new Promise(resolve => setTimeout(resolve, 15000)); // Pause for 15 seconds
+        console.log(`WORKER_PAUSE (${submissionIdForLog}): Resuming...`);
+        // --- END OF TEMPORARY PAUSE ---
 
         const dockerImage = DOCKER_IMAGE_MAP[language.toLowerCase()];
         if (!dockerImage) {
             console.error(`WORKER_ERROR (${submissionIdForLog}): Unsupported language or Docker image not mapped: ${language}`);
             return { scriptStatus: 'INTERNAL_SYSTEM_ERROR', scriptTime: 0, scriptMemory: 0, scriptOutput: `Unsupported language: ${language}`, dockerRawStderr: '' };
         }
+        console.log(`WORKER_DEBUG (${submissionIdForLog}): Using Docker image: ${dockerImage}`);
+
         const memoryLimitDocker = `${Math.max(32, Math.floor(memoryLimitKB / 1024))}m`;
+        
+        // Choose one mount path strategy:
+        const hostDirForMount = tempDirHostOs; // Strategy 1: Direct Windows Path (try this first with modern Docker Desktop/WSL2)
+        // const hostDirForMount = toDockerMountPath(tempDirHostOs); // Strategy 2: Converted Path
+
+        console.log(`WORKER_DEBUG (${submissionIdForLog}): Host path for mount: ${hostDirForMount}`);
+
+        const containerDir = '/sandbox';
         const dockerArgs = [
             'run', '--rm', '--network=none',
             `--user=${process.env.DOCKER_CONTAINER_UID || '1001'}`,
             `--memory=${memoryLimitDocker}`, `--memory-swap=${memoryLimitDocker}`,
-            '--cpus=1.0', '--pids-limit=128', '--cap-drop=ALL',
-            '-v', `${tempDir}:/sandbox`, dockerImage,
-            String(timeLimitSec), String(memoryLimitKB)
+            '--cpus=1.0',
+            '--pids-limit=128',
+            '--cap-drop=ALL',
+            '-v', `${hostDirForMount}:${containerDir}`,
+            dockerImage,
+            String(timeLimitSec),
+            String(memoryLimitKB)
         ];
+
         console.log(`WORKER_EXEC_COMMAND (${submissionIdForLog}): docker ${dockerArgs.join(' ')}`);
+
         return new Promise((resolve) => {
             const dockerProcess = spawn('docker', dockerArgs, { timeout: (timeLimitSec + 10) * 1000 });
-            let rawStdout = '', rawStderr = '';
-            if(dockerProcess.stdout) dockerProcess.stdout.on('data', (data) => rawStdout += data.toString()); else console.warn(`WORKER_WARN (${submissionIdForLog}): dockerProcess.stdout is null!`);
-            if(dockerProcess.stderr) dockerProcess.stderr.on('data', (data) => rawStderr += data.toString()); else console.warn(`WORKER_WARN (${submissionIdForLog}): dockerProcess.stderr is null!`);
+            let rawStdout = '';
+            let rawStderr = '';
+
+            if (dockerProcess.stdout) dockerProcess.stdout.on('data', (data) => rawStdout += data.toString());
+            else console.warn(`WORKER_WARN (${submissionIdForLog}): dockerProcess.stdout is null!`);
+            
+            if (dockerProcess.stderr) dockerProcess.stderr.on('data', (data) => rawStderr += data.toString());
+            else console.warn(`WORKER_WARN (${submissionIdForLog}): dockerProcess.stderr is null!`);
+            
             dockerProcess.on('error', (err) => {
                 console.error(`WORKER_ERROR (${submissionIdForLog}): Docker spawn error:`, err);
                 resolve({ scriptStatus: 'DOCKER_SPAWN_ERROR', scriptTime: 0, scriptMemory: 0, scriptOutput: err.message, dockerRawStderr: rawStderr });
             });
+
             dockerProcess.on('close', (code, signal) => {
                 console.log(`WORKER_DEBUG (${submissionIdForLog}): Docker process closed. Code: ${code}, Signal: ${signal}`);
                 console.log(`WORKER_RAW_STDOUT (${submissionIdForLog}):\n${rawStdout}`);
                 console.log(`WORKER_RAW_STDERR (${submissionIdForLog}):\n${rawStderr}`);
+
                 if (signal === 'SIGTERM') resolve({ scriptStatus: 'TIME_LIMIT_EXCEEDED_EXTERNAL', scriptTime: timeLimitSec, scriptMemory: 0, scriptOutput: 'Execution surpassed external watchdog timeout.', dockerRawStderr: rawStderr });
                 else if (code !== 0 && !rawStdout.trim()) resolve({ scriptStatus: 'DOCKER_RUNTIME_ERROR', scriptTime: 0, scriptMemory: 0, scriptOutput: `Container exited code ${code} without script output. Check raw stderr.`, dockerRawStderr: rawStderr });
                 else {
@@ -113,11 +183,16 @@ const executeSingleTestCaseInDocker = async (language, code, stdin, timeLimitSec
                 }
             });
         });
+
     } catch (error) {
         console.error(`WORKER_ERROR (${submissionIdForLog}): Outer catch in executeSingleTestCaseInDocker:`, error);
         return { scriptStatus: 'INTERNAL_SYSTEM_ERROR', scriptTime: 0, scriptMemory: 0, scriptOutput: `Worker internal error during test case setup: ${error.message}`, dockerRawStderr: '' };
     } finally {
-        if (tempDir) await cleanupTempDir(tempDir);
+        // Temporarily comment out for debugging file visibility, REMEMBER TO RE-ENABLE
+        // if (tempDirHostOs) await cleanupTempDir(tempDirHostOs); 
+        if (tempDirHostOs) {
+            console.log(`WORKER_DEBUG (${submissionIdForLog}): Skipping cleanup of ${tempDirHostOs} for debugging.`);
+        }
     }
 };
 
@@ -133,12 +208,10 @@ const processSubmissionJob = async (job) => {
       return; 
     }
   } catch (e) {
-    console.error(`Worker: Error fetching submission ${submissionId} for job ${job.id}:`, e); // This was the Mongoose timeout error
-   
-    throw e; // Re-throw error so BullMQ marks job as failed
+    console.error(`Worker: Error fetching submission ${submissionId} for job ${job.id}:`, e);
+    throw e;
   }
 
- 
   let problem;
   try {
     problem = await Problem.findById(submission.problemId).select('+testCases');
@@ -152,24 +225,36 @@ const processSubmissionJob = async (job) => {
      await Submission.findByIdAndUpdate(submissionId, { verdict: 'Internal System Error', compileOutput: 'Error fetching problem details.' });
      return;
   }
+  
   await Submission.findByIdAndUpdate(submissionId, { verdict: 'Compiling', testCaseResults: [] , compileOutput: null, stderr: null, executionTime: 0, memoryUsed: 0 });
+
   let overallVerdict = 'Accepted';
   let maxTime = 0, maxMemory = 0;
   let finalCompileOutput = null, finalStderrForSubmission = null;
   const resultsForDB = [];
+
   const testCasesToRun = submission.submissionType === 'run' ? problem.testCases.filter(tc => tc.isSample) : problem.testCases;
+
   if (!testCasesToRun || testCasesToRun.length === 0) {
     console.warn(`Worker: No test cases to run for submission ${submissionId} (type: ${submission.submissionType}). Problem has ${problem.testCases?.length || 0} total cases.`);
     await Submission.findByIdAndUpdate(submissionId, { verdict: 'Internal System Error', compileOutput: 'No test cases available for this run/submission type.' });
     return;
   }
+
   for (let i = 0; i < testCasesToRun.length; i++) {
     const tc = testCasesToRun[i];
     await Submission.findByIdAndUpdate(submissionId, { verdict: `Running Test Case ${i + 1}/${testCasesToRun.length}` });
+
     const execResult = await executeSingleTestCaseInDocker(submission.language, submission.code, tc.input, problem.cpuTimeLimit || 2, problem.memoryLimit || 128000, submissionId);
+    
     console.log(`WORKER_DEBUG (${submissionId}): execResult from Docker for TC ${i+1}:`, JSON.stringify(execResult, null, 2));
-    let tcStatus = 'Internal System Error'; let tcActualOutput = null;
-    maxTime = Math.max(maxTime, execResult.scriptTime || 0); maxMemory = Math.max(maxMemory, execResult.scriptMemory || 0);
+
+    let tcStatus = 'Internal System Error'; 
+    let tcActualOutput = null;
+
+    maxTime = Math.max(maxTime, execResult.scriptTime || 0); 
+    maxMemory = Math.max(maxMemory, execResult.scriptMemory || 0);
+
     switch (execResult.scriptStatus) {
         case 'COMPILATION_ERROR': tcStatus = 'Compilation Error'; finalCompileOutput = execResult.scriptOutput; if (overallVerdict === 'Accepted') overallVerdict = 'Compilation Error'; if (!finalStderrForSubmission) finalStderrForSubmission = execResult.scriptOutput; break;
         case 'DOCKER_SPAWN_ERROR': case 'DOCKER_RUNTIME_ERROR': case 'UNKNOWN_SCRIPT_OUTPUT': case 'INTERNAL_SYSTEM_ERROR': tcStatus = 'Internal System Error'; if (overallVerdict === 'Accepted') overallVerdict = 'Internal System Error'; if (!finalStderrForSubmission) finalStderrForSubmission = execResult.scriptOutput + (execResult.dockerRawStderr ? `\nDocker stderr: ${execResult.dockerRawStderr}` : ''); tcActualOutput = execResult.scriptOutput; break;
@@ -191,75 +276,48 @@ const processSubmissionJob = async (job) => {
   console.log(`✅ Updated submission ${submissionId} with verdict: ${overallVerdict}`);
 };
 
-
-// --- Run Worker ---
 const isMainModule = import.meta.url === pathToFileURL(process.argv[1]).href;
 
 if (isMainModule) {
     (async () => {
         try {
-            // Establish MongoDB connection FIRST
             await connectDB();
             console.log("✅ Worker successfully connected to MongoDB.");
 
-            // Add Mongoose connection event listeners for monitoring
             mongoose.connection.on('connected', () => console.log('WORKER MONGO: Mongoose reconnected! (This might be initial too)'));
             mongoose.connection.on('error', (err) => console.error('WORKER MONGO: Mongoose connection error:', err));
             mongoose.connection.on('disconnected', () => console.warn('WORKER MONGO: Mongoose disconnected!'));
-            // mongoose.connection.on('reconnected', () => console.info('WORKER MONGO: Mongoose reconnected.')); // Can be noisy
             mongoose.connection.on('close', () => console.warn('WORKER MONGO: Mongoose connection closed.'));
 
-
             console.log('✅ Submission Worker Process Initializing BullMQ Worker...');
-            
             const worker = new Worker('submission-processing', processSubmissionJob, {
                 connection: new IORedis(REDIS_CONNECTION_OPTIONS_FOR_WORKER),
                 concurrency: parseInt(process.env.WORKER_CONCURRENCY || '1', 10),
             });
 
-            worker.on('completed', (job, result) => {
-              console.log(`✅ Job ${job.id} (submission ${job.data.submissionId}) completed.`);
-            });
-
+            worker.on('completed', (job, result) => console.log(`✅ Job ${job.id} (submission ${job.data.submissionId}) completed.`));
             worker.on('failed', (job, err) => {
               console.error(`❌ Job ${job.id} (submission ${job.data.submissionId}) failed: ${err.message}`, err.stack);
-              Submission.findByIdAndUpdate(job.data.submissionId, { 
-                  verdict: 'Internal System Error', 
-                  stderr: `Worker job processing failed: ${err.message}`
-              }).catch(updateErr => console.error("Error updating submission on worker job failure:", updateErr));
+              Submission.findByIdAndUpdate(job.data.submissionId, { verdict: 'Internal System Error', stderr: `Worker job processing failed: ${err.message}`})
+                .catch(updateErr => console.error("Error updating submission on worker job failure:", updateErr));
             });
-            
-            worker.on('error', err => {
-              console.error('❌ Worker instance encountered an error:', err);
-            });
+            worker.on('error', err => console.error('❌ Worker instance encountered an error:', err));
 
             console.log(`✅ Submission Worker Started and listening to 'submission-processing' queue (concurrency ${process.env.WORKER_CONCURRENCY || '1'}).`);
 
             const gracefulShutdown = async (signal) => {
                 console.log(`🛑 Received ${signal}, attempting graceful shutdown of worker...`);
-                try {
-                    await worker.close(); 
-                    console.log('Worker closed gracefully.');
-                } catch (e) {
-                    console.error('Error during worker shutdown:', e);
-                }
-                try {
-                    if (mongoose.connection.readyState === 1) { // 1 === connected
-                        await mongoose.disconnect();
-                        console.log('Mongoose disconnected on shutdown.');
-                    }
-                } catch(e) {
-                    console.error('Error disconnecting mongoose during shutdown:', e);
-                }
+                try { await worker.close(); console.log('Worker closed gracefully.'); } 
+                catch (e) { console.error('Error during worker shutdown:', e); }
+                try { if (mongoose.connection.readyState === 1) { await mongoose.disconnect(); console.log('Mongoose disconnected on shutdown.'); } } 
+                catch(e) { console.error('Error disconnecting mongoose during shutdown:', e); }
                 process.exit(0);
             };
-
             process.on('SIGINT', () => gracefulShutdown('SIGINT')); 
             process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-
         } catch (startupError) {
             console.error("❌ FATAL ERROR during worker startup (DB connection or BullMQ setup):", startupError);
-            if (mongoose.connection.readyState === 1 || mongoose.connection.readyState === 2) { // 1=connected, 2=connecting
+            if (mongoose.connection.readyState === 1 || mongoose.connection.readyState === 2) {
                 await mongoose.disconnect().catch(e => console.error("Error disconnecting mongoose on startup fail:", e));
             }
             process.exit(1);
