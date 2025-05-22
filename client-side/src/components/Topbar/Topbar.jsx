@@ -80,10 +80,10 @@ function Topbar() {
                   <div className="py-1">
                     <div className="px-4 py-3 border-b border-gray-700">
                       <span className="block text-sm font-medium text-white truncate">
-                        {userData?.fullName || "Anonymous User"}
+                        {userData?.fullName }
                       </span>
                       <span className="block text-sm text-gray-400 truncate">
-                        {userData?.email || "no-email@example.com"}
+                        {userData?.email }
                       </span>
                     </div>
                     <ul className="py-1">
