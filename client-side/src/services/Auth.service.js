@@ -71,6 +71,16 @@ class AuthService {
     );
     return data;
   };
+
+   getUserProgress = async () => {
+     try {
+         const response = await axios.get(`${API}/user/me/progress`,  { withCredentials: true });
+         return response.data; 
+     } catch (error) {
+         console.error("Error in authService.getUserProgress:", error.response?.data || error.message);
+         throw error;
+     }
+  };
 }
 
 export const authService = new AuthService();

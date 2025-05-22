@@ -6,7 +6,8 @@ import {
   getUser,
   changePassword,
   verifyLogin,
-  sendResetCode
+  sendResetCode,
+  getUserProgress
 } from "../controllers/user.controller.js";
 import verifyJWT          from "../middlewares/verifyJwt.js";
 
@@ -22,5 +23,6 @@ router.post("/reset-password",  changePassword);
 router.post("/logout", verifyJWT, logout);
 router.get("/get-user", verifyJWT, getUser);
 router.get("/verify-login", verifyJWT, verifyLogin);
+router.get("/me/progress", verifyJWT, getUserProgress);
 
 export default router;

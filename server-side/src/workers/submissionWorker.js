@@ -1,4 +1,3 @@
-// --- Load Environment Variables from root ---
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -14,28 +13,25 @@ console.log("WORKER ENV: Loaded REDIS_PORT:", process.env.REDIS_PORT || '6379');
 console.log("WORKER ENV: Loaded DOCKER_CONTAINER_UID:", process.env.DOCKER_CONTAINER_UID || '1001');
 console.log("WORKER ENV: Loaded WORKER_CONCURRENCY:", process.env.WORKER_CONCURRENCY || '1');
 
-// --- Node Modules ---
 import fs from 'fs/promises';
 import os from 'os';
 import { spawn } from 'child_process';
 
-// --- BullMQ + Redis ---
 import IORedis from 'ioredis';
 import { Worker } from 'bullmq';
 
-// --- Mongoose & Models ---
 import mongoose from 'mongoose';
 import { Submission } from '../models/submission.model.js';
 import { Problem } from '../models/problem.model.js';
 
-// --- MongoDB Connection Function ---
 import connectDB from '../database/db.js';
 
-// --- Constants ---
 const DOCKER_IMAGE_MAP = {
   cpp: 'execution-engine/cpp:latest',
   java: 'execution-engine/java:latest',
   javascript: 'execution-engine/node:latest',
+  python: 'execution-engine/python:latest',
+ 
   
 };
 
@@ -46,7 +42,6 @@ const REDIS_CONNECTION_OPTIONS_FOR_WORKER = {
   enableReadyCheck: false,
 };
 
-// --- Helper Functions ---
 const getCodeFileName = (language) => {
   switch (language.toLowerCase()) {
     case 'cpp': return 'Main.cpp';
@@ -88,12 +83,7 @@ const executeSingleTestCaseInDocker = async (language, code, stdin, timeLimitSec
         // Option 1: Use os.tmpdir()
         tempDirHostOs = await fs.mkdtemp(path.join(os.tmpdir(), `sub-${submissionIdForLog.toString().slice(-6)}-exec-`));
         
-        // Option 2: Use a fixed root like C:\MyDockerJudgeTests (uncomment to use)
-        // const hostTestRoot = 'C:\\MyDockerJudgeTests'; 
-        // await fs.mkdir(hostTestRoot, { recursive: true });
-        // const uniqueSubDirName = `sub-${submissionIdForLog.toString().slice(-6)}-${Date.now()}`;
-        // tempDirHostOs = path.join(hostTestRoot, uniqueSubDirName);
-        // await fs.mkdir(tempDirHostOs, { recursive: true });
+
         
         console.log(`WORKER_DEBUG (${submissionIdForLog}): Created host tempDir: ${tempDirHostOs}`);
 
@@ -116,11 +106,9 @@ const executeSingleTestCaseInDocker = async (language, code, stdin, timeLimitSec
         await fs.writeFile(inputFilePath, stdin || '');
         console.log(`WORKER_SUCCESS (${submissionIdForLog}): Successfully wrote stdin to ${inputFilePath}`);
 
-        // --- TEMPORARY PAUSE FOR MANUAL INSPECTION ---
         console.log(`WORKER_PAUSE (${submissionIdForLog}): Pausing for 15 seconds. Check directory: ${tempDirHostOs}`);
         await new Promise(resolve => setTimeout(resolve, 15000)); // Pause for 15 seconds
         console.log(`WORKER_PAUSE (${submissionIdForLog}): Resuming...`);
-        // --- END OF TEMPORARY PAUSE ---
 
         const dockerImage = DOCKER_IMAGE_MAP[language.toLowerCase()];
         if (!dockerImage) {
@@ -131,9 +119,7 @@ const executeSingleTestCaseInDocker = async (language, code, stdin, timeLimitSec
 
         const memoryLimitDocker = `${Math.max(32, Math.floor(memoryLimitKB / 1024))}m`;
         
-        // Choose one mount path strategy:
         const hostDirForMount = tempDirHostOs; // Strategy 1: Direct Windows Path (try this first with modern Docker Desktop/WSL2)
-        // const hostDirForMount = toDockerMountPath(tempDirHostOs); // Strategy 2: Converted Path
 
         console.log(`WORKER_DEBUG (${submissionIdForLog}): Host path for mount: ${hostDirForMount}`);
 

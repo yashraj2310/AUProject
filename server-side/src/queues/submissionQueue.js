@@ -1,4 +1,3 @@
-// server/src/queues/submissionQueue.js
 import { Queue } from 'bullmq';
 import IORedis from 'ioredis';
 
@@ -9,10 +8,9 @@ export const REDIS_CONNECTION_OPTIONS = {
   enableReadyCheck: false 
 };
 
-// Create the queue instance.
 
 export const submissionProcessingQueue = new Queue('submission-processing', {
-  connection: new IORedis(REDIS_CONNECTION_OPTIONS) // Each queue instance should have its own client for BullMQ v3+
+  connection: new IORedis(REDIS_CONNECTION_OPTIONS) 
 });
 
 submissionProcessingQueue.on('error', err => {

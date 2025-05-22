@@ -4,6 +4,8 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { User } from "../models/user.models.js";
 import { emailService } from "../utils/emailService.js";
+import { Submission } from '../models/submission.model.js';
+import { Problem } from '../models/problem.model.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const cookieOpts = {
@@ -172,6 +174,56 @@ export const changePassword = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, {}, "Password reset successfully"));
 });
 
+//here i will add the function to get the user submissions for tracking user progress
+export const getUserProgress = asyncHandler(async (req, res) => {
+    const userId = req.user?._id; // From verifyJWT middleware
 
+    if (!userId) {
+        // This case should ideally be caught by verifyJWT itself
+        throw new ApiError(401, "User not authenticated");
+    }
+
+    const allProblems = await Problem.find()
+        .select('_id title difficulty') 
+        .lean(); 
+
+    if (!allProblems || allProblems.length === 0) {
+        return res.status(200).json(new ApiResponse(200, [], "No problems available to track progress for."));
+    }
+
+    const userSubmissions = await Submission.find({ 
+            userId: userId, 
+            submissionType: 'submit' 
+        })
+        .select('problemId verdict') 
+        .sort({ createdAt: 1 });
+    // Key: problemId (string), Value: 'Solved' or 'Attempted'
+    const userProblemStatusMap = new Map();
+
+    for (const sub of userSubmissions) {
+        const problemIdStr = sub.problemId.toString();
+        const currentBestStatus = userProblemStatusMap.get(problemIdStr);
+
+        if (sub.verdict === 'Accepted') {
+            userProblemStatusMap.set(problemIdStr, 'Solved');
+        } else if (currentBestStatus !== 'Solved') { 
+            // If not already solved, mark as attempted for any other submit verdict
+            userProblemStatusMap.set(problemIdStr, 'Attempted');
+        }
+    }
+
+    const progressData = allProblems.map(problem => {
+        const problemIdStr = problem._id.toString();
+        const status = userProblemStatusMap.get(problemIdStr) || 'Not Attempted';
+        return {
+            problemId: problem._id, // Send as problemId for clarity
+            title: problem.title,
+            difficulty: problem.difficulty,
+            userStatus: status,
+        };
+    });
+
+    res.status(200).json(new ApiResponse(200, progressData, "User progress fetched successfully"));
+});
 
 

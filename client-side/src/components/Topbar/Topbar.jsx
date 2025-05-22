@@ -18,6 +18,7 @@ function Topbar() {
   const navItems = [
     { title: "Problems", redirection: "/" },
     { title: "Contest", redirection: "/contest" },
+    { title: "My Progress", redirection: "/my-progress" },
   ];
 
   const handleLogout = async () => {
