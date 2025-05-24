@@ -8,6 +8,7 @@ const testCaseResultSchema = new Schema({
   status: { type: String, enum: ['Accepted', 'Wrong Answer', 'Time Limit Exceeded', 'Memory Limit Exceeded', 'Runtime Error', 'Skipped'], required: true },
   time: { type: Number }, // seconds
   memory: { type: Number }, // KB
+   inputSize: { type: Number, default: 0 },
   isSample: { type: Boolean }
 }, { _id: false });
 
@@ -38,7 +39,9 @@ const submissionSchema = new Schema(
     executionTime: { type: Number }, 
     memoryUsed: { type: Number },
     
-    submissionType: { type: String, enum: ['run', 'submit'], required: true, default: 'submit' }
+    submissionType: { type: String, enum: ['run', 'submit'], required: true, default: 'submit' },
+    estimatedTimeComplexity: { type: String },
+    estimatedSpaceComplexity: { type: String },
   },
   { timestamps: true }
 );

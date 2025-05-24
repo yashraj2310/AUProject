@@ -333,6 +333,16 @@ export default function ProblemDetail() {
                         Overall - Max Time: {currentSubmission.executionTime?.toFixed(3)}s, Max Memory: {(currentSubmission.memoryUsed / 1024)?.toFixed(2)}MB
                     </p>
                 )}
+                {currentSubmission && currentSubmission.verdict === 'Accepted' && currentSubmission.submissionType === 'submit' && (
+    <div className="mt-3 text-xs">
+        {currentSubmission.estimatedTimeComplexity && (
+            <p>Estimated Time Complexity: <span className="font-semibold">{currentSubmission.estimatedTimeComplexity}</span></p>
+        )}
+        {currentSubmission.estimatedSpaceComplexity && (
+            <p>Estimated Space Complexity: <span className="font-semibold">{currentSubmission.estimatedSpaceComplexity}</span></p>
+        )}
+    </div>
+)}
             </div>
           )}
         </div>

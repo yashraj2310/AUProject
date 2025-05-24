@@ -35,7 +35,7 @@ async function startServer() {
 
   // Public
   app.use('/user', userRouter);
-  app.use('/problem', problemRouter);
+  app.use('/problems', problemRouter);
 
   // Protected
   app.use('/submissions', verifyJwt, submissionRouter);

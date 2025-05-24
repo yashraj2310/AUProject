@@ -4,12 +4,15 @@
     "description": "<p>Given an array of integers <code>nums</code> and an integer <code>target</code>, return indices of the two numbers such that they add up to <code>target</code>.</p><p>You may assume that each input would have <strong>exactly one solution</strong>, and you may not use the same element twice.</p><p>You can return the answer in any order. Ensure your output is a JSON array of two numbers, sorted in ascending order (e.g., <code>[0,1]</code>).</p>",
     "difficulty": "Easy",
     "defaultLanguage": "javascript",
-    "starterCode": "// Input format: \n// Line 1: JSON array of numbers (e.g., [2,7,11,15])\n// Line 2: Target integer (e.g., 9)\n// Output format: JSON array of two indices (e.g., [0,1])\n\nfunction twoSum(nums, target) {\n    const numMap = new Map();\n    for (let i = 0; i < nums.length; i++) {\n        const complement = target - nums[i];\n        if (numMap.has(complement)) {\n            return [numMap.get(complement), i].sort((a,b) => a - b);\n        }\n        numMap.set(nums[i], i);\n    }\n    return []; // Should not be reached\n}\n\n// --- Boilerplate for reading input and printing output ---\nconst readline = require('readline');\nconst rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });\nlet inputLines = [];\nrl.on('line', (line) => inputLines.push(line));\nrl.on('close', () => {\n    if (inputLines.length < 2) {\n        return;\n    }\n    try {\n        const nums = JSON.parse(inputLines[0]);\n        const target = parseInt(inputLines[1]);\n        const result = twoSum(nums, target);\n        console.log(JSON.stringify(result));\n    } catch (e) {}\n});",
+    "starterCode": "// Input format: \n// Line 1: JSON array of numbers (e.g., [2,7,11,15])\n// Line 2: Target integer (e.g., 9)\n// Output format: JSON array of two indices (e.g., [0,1])\n\nfunction twoSum(nums, target) {\n    const numMap = new Map();\n    for (let i = 0; i < nums.length; i++) {\n        const complement = target - nums[i];\n        if (numMap.has(complement)) {\n            return [numMap.get(complement), i].sort((a,b) => a - b);\n        }\n        numMap.set(nums[i], i);\n    }\n    return []; // Should not be reached\n}\n\n// --- Boilerplate for reading input and printing output ---\nconst readline = require('readline');\nconst rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });\nlet inputLines = [];\nrl.on('line', (line) => inputLines.push(line));\nrl.on('close', () => {\n    if (inputLines.length < 2) {\n        // console.error(\"Not enough input lines for Two Sum\");\n        return;\n    }\n    try {\n        const nums = JSON.parse(inputLines[0]);\n        const target = parseInt(inputLines[1]);\n        const result = twoSum(nums, target);\n        console.log(JSON.stringify(result));\n    } catch (e) {\n        // console.error(\"Error processing input for Two Sum:\", e);\n    }\n});",
+    "tags": ["Array", "Hash Table"],
     "testCases": [
       { "input": "[2,7,11,15]\n9", "expectedOutput": "[0,1]", "isSample": true },
       { "input": "[3,2,4]\n6", "expectedOutput": "[1,2]", "isSample": false },
       { "input": "[3,3]\n6", "expectedOutput": "[0,1]", "isSample": false },
-      { "input": "[0,4,3,0]\n0", "expectedOutput": "[0,3]", "isSample": false }
+      { "input": "[0,4,3,0]\n0", "expectedOutput": "[0,3]", "isSample": false },
+      { "input": "[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]\n39", "expectedOutput": "[18,19]", "isSample": false },
+      { "input": "[-10,-20,5,15,25,50]\n-5", "expectedOutput": "[2,4]", "isSample": false }
     ],
     "cpuTimeLimit": 1,
     "memoryLimit": 131072
@@ -20,11 +23,15 @@
     "difficulty": "Easy",
     "defaultLanguage": "java",
     "starterCode": "import java.util.Scanner;\nimport java.util.ArrayList;\nimport java.util.List;\n\npublic class Main { // Class name MUST be Main\n    public static List<Long> calculatePrefixSum(List<Integer> arr) {\n        List<Long> prefixSums = new ArrayList<>();\n        if (arr == null) { \n            return prefixSums;\n        }\n        if (arr.isEmpty()) {\n             return prefixSums;\n        }\n        prefixSums.add((long)arr.get(0));\n        for (int i = 1; i < arr.size(); i++) {\n            prefixSums.add(prefixSums.get(i - 1) + arr.get(i));\n        }\n        return prefixSums;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        String line = \"\";\n        if (sc.hasNextLine()) { \n             line = sc.nextLine();\n        }\n        sc.close();\n\n        line = line.trim();\n        List<Integer> arr = new ArrayList<>();\n        if (line.startsWith(\"[\") && line.endsWith(\"]\") && line.length() >= 2) {\n            String content = line.substring(1, line.length() - 1).trim();\n            if (!content.isEmpty()) {\n                String[] numbersStr = content.split(\",\");\n                for (String numStr : numbersStr) {\n                    String trimmedNumStr = numStr.trim();\n                    if (!trimmedNumStr.isEmpty()) {\n                        try {\n                            arr.add(Integer.parseInt(trimmedNumStr));\n                        } catch (NumberFormatException e) {}\n                    }\n                }\n            }\n        }\n\n        List<Long> result = calculatePrefixSum(arr);\n\n        System.out.print(\"[\");\n        for (int i = 0; i < result.size(); i++) {\n            System.out.print(result.get(i));\n            if (i < result.size() - 1) {\n                System.out.print(\",\");\n            }\n        }\n        System.out.println(\"]\");\n    }\n}\n",
+    "tags": ["Array", "Prefix Sum"],
     "testCases": [
-      { "input": "[1,2,3,4]", "expectedOutput": "[1,3,6,10]", "isSample": true },
-      { "input": "[10]", "expectedOutput": "[10]", "isSample": false },
-      { "input": "[-1,-2,-3]", "expectedOutput": "[-1,-3,-6]", "isSample": false },
-      { "input": "[]", "expectedOutput": "[]", "isSample": false }
+      { "input": "[1]", "expectedOutput": "[1]", "isSample": true },
+      { "input": "[1,2,3,4,5]", "expectedOutput": "[1,3,6,10,15]", "isSample": true }, 
+      { "input": "[10,20]", "expectedOutput": "[10,30]", "isSample": false }, 
+      { "input": "[-1,-2,-3,-4,-5,-6,-7,-8,-9,-10]", "expectedOutput": "[-1,-3,-6,-10,-15,-21,-28,-36,-45,-55]", "isSample": false }, 
+      { "input": "[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]", "expectedOutput": "[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]", "isSample": false }, 
+      { "input": "[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]", "expectedOutput": "[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]", "isSample": false }, 
+      { "input": "[2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]", "expectedOutput": "[2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,56,58,60,62,64,66,68,70,72,74,76,78,80,82,84,86,88,90,92,94,96,98,100,102,104,106,108,110,112,114,116,118,120,122,124,126,128,130,132,134,136,138,140,142,144,146,148,150,152,154,156,158,160,162,164,166,168,170,172,174,176,178,180,182,184,186,188,190,192,194,196,198,200]", "isSample": false } 
     ],
     "cpuTimeLimit": 2,
     "memoryLimit": 262144
@@ -34,14 +41,62 @@
     "description": "<p>Write a function that reverses a string. The input string is given as an array of characters <code>s</code>.</p><p>You <strong>must</strong> do this by modifying the input array <strong>in-place</strong> with O(1) extra memory.</p><p>Input is a single line JSON array of characters. Output should be the modified array as a single line JSON array.</p>",
     "difficulty": "Easy",
     "defaultLanguage": "python",
-    "starterCode": "import json\nimport sys\n\ndef reverseString(s: list[str]) -> None:\n    left, right = 0, len(s) - 1\n    while left < right:\n        s[left], s[right] = s[right], s[left]\n        left += 1\n        right -= 1\n\nif __name__ == '__main__':\n    try:\n        line = sys.stdin.readline()\n        if not line:\n            print(\"[]\")\n        else:\n            s_array = json.loads(line)\n            if not isinstance(s_array, list):\n                print(\"[]\")\n            else:\n                reverseString(s_array)\n                print(json.dumps(s_array, separators=(',', ':'))) # <--- MODIFIED HERE\n    except json.JSONDecodeError:\n        print(\"[]\")\n    except Exception as e:\n        print(\"[]\")\n",
+    "starterCode": "import json\nimport sys\n\ndef reverseString(s: list[str]) -> None:\n    \"\"\"\n    Reverses a list of characters in-place.\n    \"\"\"\n    left, right = 0, len(s) - 1\n    while left < right:\n        s[left], s[right] = s[right], s[left]\n        left += 1\n        right -= 1\n\n# --- Boilerplate for reading input and printing output ---\nif __name__ == '__main__':\n    try:\n        line = sys.stdin.readline()\n        if not line:\n            print(\"[]\")\n        else:\n            s_array = json.loads(line)\n            if not isinstance(s_array, list):\n                print(\"[]\")\n            else:\n                reverseString(s_array)\n                print(json.dumps(s_array, separators=(',', ':')))\n    except json.JSONDecodeError:\n        print(\"[]\")\n    except Exception as e:\n        # print(f\"An unexpected error occurred: {e}\", file=sys.stderr)\n        print(\"[]\")\n",
+    "tags": ["String", "Two Pointers"],
     "testCases": [
+      { "input": "[\"a\"]", "expectedOutput": "[\"a\"]", "isSample": true },
       { "input": "[\"h\",\"e\",\"l\",\"l\",\"o\"]", "expectedOutput": "[\"o\",\"l\",\"l\",\"e\",\"h\"]", "isSample": true },
-      { "input": "[\"H\",\"a\",\"n\",\"n\",\"a\",\"h\"]", "expectedOutput": "[\"h\",\"a\",\"n\",\"n\",\"a\",\"H\"]", "isSample": false },
-      { "input": "[\"a\"]", "expectedOutput": "[\"a\"]", "isSample": false },
-      { "input": "[]", "expectedOutput": "[]", "isSample": false }
+      { "input": "[\"S\",\"o\",\"r\",\"t\",\"M\",\"e\"]", "expectedOutput": "[\"e\",\"M\",\"t\",\"r\",\"o\",\"S\"]", "isSample": false },
+      { "input": "[\"1\",\"2\",\"3\",\"4\",\"5\",\"6\",\"7\",\"8\",\"9\",\"0\"]", "expectedOutput": "[\"0\",\"9\",\"8\",\"7\",\"6\",\"5\",\"4\",\"3\",\"2\",\"1\"]", "isSample": false },
+      { "input": "[\"a\",\"b\",\"c\",\"d\",\"e\",\"f\",\"g\",\"h\",\"i\",\"j\",\"k\",\"l\",\"m\",\"n\",\"o\",\"p\",\"q\",\"r\",\"s\",\"t\"]", "expectedOutput": "[\"t\",\"s\",\"r\",\"q\",\"p\",\"o\",\"n\",\"m\",\"l\",\"k\",\"j\",\"i\",\"h\",\"g\",\"f\",\"e\",\"d\",\"c\",\"b\",\"a\"]", "isSample": false },
+      { "input": "[\"L\",\"o\",\"n\",\"g\",\"e\",\"r\",\"S\",\"t\",\"r\",\"i\",\"n\",\"g\",\"F\",\"o\",\"r\",\"T\",\"e\",\"s\",\"t\",\"i\",\"n\",\"g\"]", "expectedOutput": "[\"g\",\"n\",\"i\",\"t\",\"s\",\"e\",\"T\",\"r\",\"o\",\"F\",\"g\",\"n\",\"i\",\"r\",\"t\",\"S\",\"r\",\"e\",\"g\",\"n\",\"o\",\"L\"]", "isSample": false}
     ],
     "cpuTimeLimit": 1,
     "memoryLimit": 65536 
+  },
+  {
+    "title": "Palindrome Check",
+    "description": "<p>Given a string <code>s</code>, determine if it is a palindrome, considering only alphanumeric characters and ignoring cases.</p><p>An empty string is considered a valid palindrome.</p><p>Input is a single string. Output should be <code>true</code> or <code>false</code> (lowercase string).</p>",
+    "difficulty": "Easy",
+    "defaultLanguage": "javascript",
+    "starterCode": "// Input: a single string s\n// Output: \"true\" or \"false\" (string, lowercase)\n\nfunction isPalindrome(s) {\n    const alphanumeric = s.toLowerCase().replace(/[^a-z0-9]/g, '');\n    let left = 0;\n    let right = alphanumeric.length - 1;\n    while (left < right) {\n        if (alphanumeric[left] !== alphanumeric[right]) {\n            return false;\n        }\n        left++;\n        right--;\n    }\n    return true;\n}\n\nconst readline = require('readline');\nconst rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });\nrl.once('line', (line) => {\n    try {\n        const result = isPalindrome(line);\n        console.log(result.toString());\n    } catch (e) {\n        console.log(\"false\");\n    }\n    rl.close();\n});",
+    "tags": ["String", "Two Pointers", "Palindrome"],
+    "testCases": [
+      { "input": "A man, a plan, a canal: Panama", "expectedOutput": "true", "isSample": true },
+      { "input": "race a car", "expectedOutput": "false", "isSample": true },
+      { "input": " ", "expectedOutput": "true", "isSample": false },
+      { "input": "Was it a car or a cat I saw?", "expectedOutput": "true", "isSample": false },
+      { "input": "0P", "expectedOutput": "false", "isSample": false },
+      { "input": "madamimadam", "expectedOutput": "true", "isSample": false },
+      { "input": "Step on no pets!!", "expectedOutput": "true", "isSample": false },
+      { "input": "Rotor", "expectedOutput": "true", "isSample": false },
+      { "input": "A Toyota! Race fast, safe car! A Toyota!", "expectedOutput": "true", "isSample": false},
+      { "input": "This is definitely not a palindrome string.", "expectedOutput": "false", "isSample": false }
+    ],
+    "cpuTimeLimit": 1,
+    "memoryLimit": 131072 
+  },
+  {
+    "title": "Longest Substring Without Repeating Characters",
+    "description": "<p>Given a string <code>s</code>, find the length of the longest substring without repeating characters.</p><p>Input is a single string. Output should be an integer representing the length.</p>",
+    "difficulty": "Medium",
+    "defaultLanguage": "javascript",
+    "starterCode": "// Input: a single string s\n// Output: an integer (length of the longest substring)\n\nfunction lengthOfLongestSubstring(s) {\n    let n = s.length;\n    let maxLength = 0;\n    let charSet = new Set();\n    let left = 0;\n    for (let right = 0; right < n; right++) {\n        while (charSet.has(s[right])) {\n            charSet.delete(s[left]);\n            left++;\n        }\n        charSet.add(s[right]);\n        maxLength = Math.max(maxLength, right - left + 1);\n    }\n    return maxLength;\n}\n\nconst readline = require('readline');\nconst rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });\nrl.once('line', (line) => {\n    try {\n        const result = lengthOfLongestSubstring(line);\n        console.log(result);\n    } catch (e) {\n        console.log(0);\n    }\n    rl.close();\n});",
+    "tags": ["String", "Sliding Window", "Hash Table", "Set"],
+    "testCases": [
+      { "input": "abcabcbb", "expectedOutput": "3", "isSample": true },
+      { "input": "bbbbb", "expectedOutput": "1", "isSample": true },
+      { "input": "pwwkew", "expectedOutput": "3", "isSample": false },
+      { "input": "", "expectedOutput": "0", "isSample": false },
+      { "input": "abcdefghijklmnopqrstuvwxyz", "expectedOutput": "26", "isSample": false },
+      { "input": "abacaba", "expectedOutput": "3", "isSample": false },
+      { "input": "zzzzabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789zzzz", "expectedOutput": "62", "isSample": false },
+      { "input": "tmmzuxt", "expectedOutput": "5", "isSample": false },
+      { "input": "au", "expectedOutput": "2", "isSample": false},
+      { "input": "a", "expectedOutput": "1", "isSample": false},
+      { "input": "abcdefgfedcba", "expectedOutput": "7", "isSample": false}
+    ],
+    "cpuTimeLimit": 1,
+    "memoryLimit": 131072 
   }
 ]

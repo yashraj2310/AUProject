@@ -67,6 +67,7 @@ EXECUTION_EXIT_CODE=$?
 
 EXEC_TIME_SECONDS="0.00"
 PEAK_MEMORY_KB="0" # This will be what /usr/bin/time reports for the JVM process
+INPUT_SIZE_FROM_FILE=$(wc -c < "$INPUT_FILENAME_INTERNAL" | awk '{print $1}') # Get input size in bytes
 
 if [ -f "$STATS_FILENAME" ]; then
     STATS_CONTENT=$(cat "$STATS_FILENAME")
@@ -128,5 +129,6 @@ fi
 echo "EXECUTED_SUCCESSFULLY"
 echo "$EXEC_TIME_SECONDS"
 echo "$PEAK_MEMORY_KB"
+echo "$INPUT_SIZE_FROM_FILE"
 cat "$USER_STDOUT_FILENAME"
 exit 0

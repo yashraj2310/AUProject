@@ -5,8 +5,33 @@ import { Problem } from '../models/problem.model.js';
 
 // GET /problem/get-all
 export const listProblems = asyncHandler(async (req, res) => {
-  const problems = await Problem.find().select('title difficulty');
-  res.json(new ApiResponse(200, problems, 'Problems Received'));
+  const { tags, difficulty, search } = req.query; 
+
+  let query = {};
+
+  if (tags) {
+    const tagsArray = Array.isArray(tags) ? tags : tags.split(',').map(tag => tag.trim());
+    if (tagsArray.length > 0) {
+      query.tags = { $all: tagsArray }; 
+    }
+  }
+  if (difficulty) {
+    query.difficulty = difficulty; 
+  }
+  if (search) {
+     query.title = { $regex: search, $options: 'i' };
+  }
+  const problems = await Problem.find(query)
+    .select('title difficulty tags _id') 
+    .sort({ createdAt: -1 }); 
+
+  res.status(200).json(new ApiResponse(200, problems, 'Problems fetched successfully'));
+});
+
+// Controller to get all unique tags available
+export const getAllUniqueTags = asyncHandler(async (req, res) => {
+     const uniqueTags = await Problem.distinct('tags');
+     res.status(200).json(new ApiResponse(200, uniqueTags.sort(), "Unique tags fetched successfully"));
 });
 
 // GET /problem/:id

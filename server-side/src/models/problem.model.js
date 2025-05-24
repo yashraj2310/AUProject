@@ -1,7 +1,7 @@
 import mongoose, { Schema } from 'mongoose';
 
 const testCaseSchema = new Schema({
-  input: { type: String, required: true },
+  input: { type: String },
   expectedOutput: { type: String, required: true },
   isSample: { type: Boolean, default: false }, 
  
@@ -25,10 +25,12 @@ const problemSchema = new Schema({
      default: '// Start coding here...'
   
 },
+  tags: [{ type: String, trim: true }],
   testCases: [testCaseSchema],
-  cpuTimeLimit: { type: Number, default: 2 }, // e.g., 2 seconds
+  cpuTimeLimit: { type: Number, default: 2 }, 
  
-  memoryLimit: { type: Number, default: 128000 }, // e.g., 128 MB (128 * 1024)
+  memoryLimit: { type: Number, default: 128000 }, 
 }, { timestamps: true });
+problemSchema.index({ tags: 1 });
 
 export const Problem = mongoose.model('Problem', problemSchema);
