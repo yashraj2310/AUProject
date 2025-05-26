@@ -1,0 +1,29 @@
+[
+  {
+    "title": "Past Champions Challenge",
+    "description": "<p>A look back at a previous challenge.</p>",
+    "startTime": "2024-05-01T10:00:00.000Z", 
+    "endTime": "2024-05-01T12:00:00.000Z",   
+    "problemTitles": ["Two Sum", "Prefix Sum"], 
+    "creatorUsername": "yashraj", 
+    "visibility": "public"
+  },
+  {
+    "title": "Ongoing Coding Sprint",
+    "description": "<p>This contest is live now! Solve as many as you can.</p>",
+    "startTime": "2025-05-25T08:00:00.000Z", 
+    "endTime": "2025-05-25T14:00:00.000Z",   
+    "problemTitles": ["Prefix Sum", "Reverse String", "Palindrome Check"],
+    "creatorUsername": "yashraj",
+    "visibility": "public"
+  },
+  {
+    "title": "Future Algorithmic Showdown",
+    "description": "<p>Get ready for this one! Problems will be revealed at start time.</p>",
+    "startTime": "2025-06-15T10:00:00.000Z", 
+    "endTime": "2025-06-15T13:00:00.000Z",
+    "problemTitles": ["Longest Substring Without Repeating Characters", "Two Sum"], 
+    "creatorUsername": "yashraj",
+    "visibility": "public"
+  }
+]

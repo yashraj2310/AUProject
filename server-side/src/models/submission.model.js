@@ -42,6 +42,7 @@ const submissionSchema = new Schema(
     submissionType: { type: String, enum: ['run', 'submit'], required: true, default: 'submit' },
     estimatedTimeComplexity: { type: String },
     estimatedSpaceComplexity: { type: String },
+    contestId: { type: Schema.Types.ObjectId, ref: 'Contest', required: false }
   },
   { timestamps: true }
 );

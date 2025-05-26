@@ -27,6 +27,8 @@ import { Worker } from 'bullmq';
 import mongoose from 'mongoose';
 import { Submission } from '../models/submission.model.js';
 import { Problem } from '../models/problem.model.js';
+import { Contest } from '../models/contest.model.js';       
+import { ContestScore } from '../models/contestScore.model.js';
 
 // --- MongoDB Connection Function ---
 import connectDB from '../database/db.js';
@@ -292,7 +294,91 @@ const processSubmissionJob = async (job) => {
         console.error(`WORKER_ERROR (${submissionId}): Failed to estimate complexity:`, estimationError);
     }
   }
+ // --- CONTEST SCORING LOGIC ---
+  if (submission.contestId && submission.submissionType === 'submit') {
+    console.log(`WORKER_CONTEST (${submissionId}): Processing contest score for contest ${submission.contestId}`);
+    try {
+        const contest = await Contest.findById(submission.contestId).select('startTime endTime'); // Select necessary fields
+        const now = new Date();
 
+        // Ensure contest is currently running or has just ended (within a small buffer if needed)
+        // For simplicity, just checking if submission happened before contest ended.
+        // More precise logic would check if submission.createdAt is within contest.startTime and contest.endTime
+        if (contest && new Date(submission.createdAt) <= new Date(contest.endTime) && new Date(submission.createdAt) >= new Date(contest.startTime)) {
+            
+            const problemPoints = 100; // Example points
+            const wrongAttemptPenaltyMinutes = 10; // Example penalty
+
+            let contestScore = await ContestScore.findOne({ 
+                contestId: submission.contestId, 
+                userId: submission.userId 
+            });
+
+            if (!contestScore) {
+                contestScore = new ContestScore({
+                    contestId: submission.contestId,
+                    userId: submission.userId,
+                    problemsBreakdown: []
+                });
+            }
+
+            let problemDetail = contestScore.problemsBreakdown.find(
+                p => p.problemId.equals(submission.problemId)
+            );
+
+            if (!problemDetail) {
+                problemDetail = { 
+                    problemId: submission.problemId, 
+                    points: 0, penaltyTime: 0, attempts: 0 
+                };
+                contestScore.problemsBreakdown.push(problemDetail);
+            }
+
+            if (problemDetail.points === 0) {
+                problemDetail.attempts += 1; // Increment attempt for this problem
+
+                if (overallVerdict === 'Accepted') { // Use the overallVerdict of the current submission processing
+                    problemDetail.points = problemPoints;
+                    problemDetail.acceptedAt = submission.createdAt; // Time of this accepted submission
+
+                    const timeToSolveMs = new Date(problemDetail.acceptedAt).getTime() - new Date(contest.startTime).getTime();
+                    const timeToSolveMinutes = Math.max(0, Math.floor(timeToSolveMs / (1000 * 60)));
+                    
+                    const previousWrongAttempts = Math.max(0, problemDetail.attempts - 1);
+                    problemDetail.penaltyTime = timeToSolveMinutes + (previousWrongAttempts * wrongAttemptPenaltyMinutes);
+                    
+                    contestScore.lastAcceptedSubmissionTime = problemDetail.acceptedAt;
+                }
+                // For WA, TLE, RTE, attempts increment but no points/penaltyTime until AC.
+            }
+            
+            // Recalculate totals
+            contestScore.totalPoints = 0;
+            contestScore.totalPenalty = 0;
+            let hasSolvedProblems = false;
+            for (const pd of contestScore.problemsBreakdown) {
+                contestScore.totalPoints += pd.points || 0;
+                if ((pd.points || 0) > 0) {
+                    hasSolvedProblems = true;
+                    contestScore.totalPenalty += pd.penaltyTime || 0;
+                }
+            }
+            // If user solved no problems, totalPenalty should remain 0, even if they made attempts.
+            if (!hasSolvedProblems) {
+                contestScore.totalPenalty = 0; 
+            }
+            
+            await contestScore.save();
+            console.log(`WORKER_CONTEST_SCORE (${submissionId}): Updated contest score for user ${submission.userId} in contest ${submission.contestId}`);
+        } else {
+            console.log(`WORKER_CONTEST (${submissionId}): Contest ${submission.contestId} is not active or submission is outside contest window.`);
+        }
+    } catch (contestScoreError) {
+        console.error(`WORKER_ERROR (${submissionId}): Failed to update contest score for contest ${submission.contestId}:`, contestScoreError);
+        // Do not let contest scoring failure prevent main submission update.
+    }
+  }
+  // --- END CONTEST SCORING LOGIC ---
   const finalUpdateData = {
     verdict: overallVerdict,
     testCaseResults: resultsForDB,

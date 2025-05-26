@@ -7,7 +7,7 @@ import { submissionProcessingQueue } from '../queues/submissionQueue.js';
 
 // POST /submissions/execute (Handles both "Run" and "Submit")
 export const executeCode = asyncHandler(async (req, res) => {
-  const { problemId, code, language, submissionType } = req.body; // submissionType: "run" or "submit"
+  const { problemId, code, language, submissionType,contestId } = req.body; // submissionType: "run" or "submit"
   const userId = req.user?._id;
 
   if (!userId) throw new ApiError(401, 'User not authenticated');
@@ -28,7 +28,8 @@ export const executeCode = asyncHandler(async (req, res) => {
     language: language || problem.defaultLanguage, // Use provided lang or problem default
     verdict: 'Queued',
     submissionType,
-    testCaseResults: [] // Initialize
+    testCaseResults: [],
+    contestId,
   });
 
   // Add job to the queue

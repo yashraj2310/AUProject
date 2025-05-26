@@ -8,6 +8,7 @@ const userSchema = new mongoose.Schema(
       required: true,
       unique: true,
       type: String,
+      trim: true,
     },
     fullName: {
       required: true,

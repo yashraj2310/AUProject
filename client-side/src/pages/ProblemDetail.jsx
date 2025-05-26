@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate,useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import Editor from "@monaco-editor/react";
 import { problemService } from "../services/Problem.service";
@@ -35,6 +35,7 @@ const getResultStyle = (status) => {
 export default function ProblemDetail() {
   const { id: problemId } = useParams();
   const navigate = useNavigate();
+   const location = useLocation();
 
   const { status: isAuthenticated, userData: user, loadingAuth } = useSelector(state => state.auth);
 
@@ -45,7 +46,7 @@ export default function ProblemDetail() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [pageError, setPageError] = useState("");
   const [loadingProblem, setLoadingProblem] = useState(true);
-
+  const contestIdFromState = location.state?.contestId;
   const pollIntervalRef = useRef(null);
 
   const supportedLanguages = [
@@ -157,8 +158,8 @@ export default function ProblemDetail() {
     setPageError("");
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
 
-    const payload = { problemId, code, language, submissionType };
-
+    const payload = { problemId, code, language, submissionType,...(contestIdFromState && { contestId: contestIdFromState })  };
+     console.log("Submitting payload:", payload);
     try {
       
       const apiResponse = await submissionService.executeCode(payload);
@@ -169,7 +170,6 @@ export default function ProblemDetail() {
         if (initialSubmission?._id) {
           pollForResult(initialSubmission._id);
         } else {
-          // This case means backend successfully responded but didn't return a submission with _id
           setIsProcessing(false);
           setCurrentSubmission(prev => ({
             ...prev,
@@ -178,7 +178,6 @@ export default function ProblemDetail() {
           }));
         }
       } else {
-        // Backend responded but indicated failure (e.g., apiResponse.success was false)
         setIsProcessing(false);
         setCurrentSubmission(prev => ({
           ...prev,

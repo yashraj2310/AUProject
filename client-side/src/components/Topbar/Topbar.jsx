@@ -17,7 +17,7 @@ function Topbar() {
 
   const navItems = [
     { title: "Problems", redirection: "/" },
-    { title: "Contest", redirection: "/contest" },
+    { title: "Contest", redirection: "/contests" },
     { title: "My Progress", redirection: "/my-progress" },
   ];
 
@@ -40,7 +40,6 @@ function Topbar() {
   
   useEffect(() => {
     if(isMobileNavOpen) setIsMobileNavOpen(false); // Close mobile nav on navigation change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
 
@@ -87,16 +86,7 @@ function Topbar() {
                       </span>
                     </div>
                     <ul className="py-1">
-                      {/* <li>
-                        <Link to="/dashboard" onClick={() => setIsUserDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors">
-                          <FontAwesomeIcon icon={faTachometerAlt} className="w-4 h-4 text-gray-400" /> Dashboard
-                        </Link>
-                      </li>
-                      <li>
-                        <Link to="/settings" onClick={() => setIsUserDropdownOpen(false)} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white transition-colors">
-                           <FontAwesomeIcon icon={faCog} className="w-4 h-4 text-gray-400" /> Settings
-                        </Link>
-                      </li> */}
+                      
                       <li>
                         <button
                           onClick={handleLogout}

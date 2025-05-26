@@ -9,6 +9,7 @@ import userRouter from './routes/user.routes.js';
 import verifyJwt from './middlewares/verifyJwt.js';
 import problemRouter from './routes/problem.routes.js';
 import submissionRouter from './routes/submission.routes.js'; 
+import contestRouter from './routes/contest.routes.js'; 
 dotenv.config();
 
 async function startServer() {
@@ -36,6 +37,8 @@ async function startServer() {
   // Public
   app.use('/user', userRouter);
   app.use('/problems', problemRouter);
+  app.use('/contests', contestRouter);
+
 
   // Protected
   app.use('/submissions', verifyJwt, submissionRouter);
