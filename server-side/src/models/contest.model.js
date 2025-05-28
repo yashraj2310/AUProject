@@ -1,4 +1,3 @@
-// server/src/models/contest.model.js
 import mongoose, { Schema } from 'mongoose';
 
 const contestProblemSchema = new Schema({

@@ -30,8 +30,6 @@ const submissionSchema = new Schema(
       default: 'Queued',
     },
     
-    // For "Run" button, primarily sample test case results
-    // For "Submit" button, results for all test cases (or up to first failure)
     testCaseResults: [testCaseResultSchema],
 
    
