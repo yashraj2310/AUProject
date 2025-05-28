@@ -40,4 +40,18 @@ export const submissionService = {
       throw error;
     }
   },
+   requestAIHelp: async (payload) => {
+        // payload: { code, problemId, language }
+        try {
+            const response = await axios.post(
+                `${SUBMISSIONS_API_URL}/ai-help`,
+                payload,
+                getAuthConfig()
+            );
+            return response.data; 
+        } catch (error) {
+            console.error("Error in submissionService.requestAIHelp:", error.response?.data || error.message);
+            throw error;
+        }
+    },
 };

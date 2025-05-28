@@ -4,6 +4,7 @@ import { ApiError } from '../utils/ApiError.js';
 import { Submission } from '../models/submission.model.js';
 import { Problem } from '../models/problem.model.js';
 import { submissionProcessingQueue } from '../queues/submissionQueue.js'; 
+import { getAIHelpFeedback } from '../services/aiFeedback.service.js';
 
 // POST /submissions/execute (Handles both "Run" and "Submit")
 export const executeCode = asyncHandler(async (req, res) => {
@@ -60,4 +61,33 @@ export const getSubmissionResult = asyncHandler(async (req, res) => {
   }
 
   res.status(200).json(new ApiResponse(200, submission, 'Submission result fetched.'));
+});
+export const requestAIHelp = asyncHandler(async (req, res) => {
+    const { code, problemId, language } = req.body;
+    const userId = req.user?._id; // From verifyJWT
+
+    if (!code || !problemId || !language) {
+        throw new ApiError(400, "Code, problemId, and language are required for AI help.");
+    }
+
+    const problem = await Problem.findById(problemId).select('title description');
+    if (!problem) {
+        throw new ApiError(404, "Problem not found for AI help context.");
+    }
+
+    // Fetch recent (e.g., last 3-5) submission verdicts for this user & problem
+    const recentSubmissions = await Submission.find({ userId, problemId, submissionType: 'submit' })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .select('verdict compileOutput stderr createdAt'); // Get relevant info
+
+    const problemContext = {
+        title: problem.title,
+        description: problem.description, // Could be summarized further if too long
+        language: language
+    };
+
+    const aiSuggestions = await getAIHelpFeedback(code, problemContext, recentSubmissions);
+
+    res.status(200).json(new ApiResponse(200, { suggestions: aiSuggestions }, "AI feedback generated."));
 });
