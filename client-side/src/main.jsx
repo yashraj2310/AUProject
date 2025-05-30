@@ -37,6 +37,14 @@ const router = createBrowserRouter([
         path: "/contests/:contestId/leaderboard",
         element: <LeaderboardPage />,
       },
+      {
+        path:"/contests/:contestId/problems/:problemId",
+        element: (
+          <PrivateRoute>
+            <ProblemDetail />
+          </PrivateRoute>
+        ),
+      },
 
       // protected problem detail:
       {

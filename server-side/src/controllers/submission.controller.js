@@ -6,9 +6,10 @@ import { Problem } from '../models/problem.model.js';
 import { submissionProcessingQueue } from '../queues/submissionQueue.js'; 
 import { getAIHelpFeedback } from '../services/aiFeedback.service.js';
 
+
 // POST /submissions/execute (Handles both "Run" and "Submit")
 export const executeCode = asyncHandler(async (req, res) => {
-  const { problemId, code, language, submissionType,contestId } = req.body; // submissionType: "run" or "submit"
+  const { problemId, code, language, submissionType,contestId, customInput } = req.body; // submissionType: "run" or "submit"
   const userId = req.user?._id;
 
   if (!userId) throw new ApiError(401, 'User not authenticated');
@@ -26,9 +27,10 @@ export const executeCode = asyncHandler(async (req, res) => {
     problemId,
     userId,
     code,
-    language: language || problem.defaultLanguage, // Use provided lang or problem default
+    language: language || problem.defaultLanguage, 
     verdict: 'Queued',
     submissionType,
+    customInput,
     testCaseResults: [],
     contestId,
   });

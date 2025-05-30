@@ -9,7 +9,8 @@ const testCaseResultSchema = new Schema({
   time: { type: Number }, // seconds
   memory: { type: Number }, // KB
    inputSize: { type: Number, default: 0 },
-  isSample: { type: Boolean }
+  isSample: { type: Boolean },
+  isCustom: { type: Boolean, default: false }  
 }, { _id: false });
 
 const submissionSchema = new Schema(
@@ -31,6 +32,7 @@ const submissionSchema = new Schema(
     },
     
     testCaseResults: [testCaseResultSchema],
+    customInput: { type: String, default: "" },
 
    
     compileOutput: { type: String },

@@ -69,15 +69,20 @@ export default function ContestDetailPage() {
 
     const handleSolveProblem = (problemId) => {
         if (!isAuthenticated) {
-            navigate('/login', { state: { from: `/contests/${contestId}/problems/${problemId}` } });
+            navigate(
+              `/contests/${contestId}/problems/${problemId}`, 
+              { state: { from: `/contests/${contestId}` } }
+            );
             return;
         }
-        // Navigate to the standard problem detail page, passing contestId in state
-        navigate(`/problems/${problemId}`, { state: { contestId: contestId, contestTitle: contest?.title } });
+        navigate(
+          `/contests/${contestId}/problems/${problemId}`, 
+          { state: { contestId, contestTitle: contest?.title } }
+        );
     };
 
     if (loading) return <Loader message="Loading Contest Details..." containerHeight="h-[calc(100vh-150px)]" />;
-    if (error) return <div className="p-6 text-center text-red-400">{error}</div>;
+    if (error)   return <div className="p-6 text-center text-red-400">{error}</div>;
     if (!contest) return <div className="p-6 text-center text-gray-400">Contest not found or failed to load.</div>;
 
     const statusInfo = getStatusInfo(contest.status);
@@ -95,8 +100,7 @@ export default function ContestDetailPage() {
                             {statusInfo.label}
                         </span>
                     </div>
-                    {/* Leaderboard Button - visible for running or ended contests */}
-                    {(contest.status === 'Running' || contest.status === 'Ended') && (
+                    {(contest.status === 'Running' ) && (
                         <Link to={`/contests/${contestId}/leaderboard`} className="mt-3 sm:mt-0">
                             <Button 
                                 content="Leaderboard" 
@@ -107,71 +111,77 @@ export default function ContestDetailPage() {
                     )}
                 </div>
                 <div className="text-xs text-gray-400 space-y-1 mb-4">
-                    <p><FontAwesomeIcon icon={faCalendarAlt} className="mr-2 w-3"/>Starts: {new Date(contest.startTime).toLocaleString()}</p>
-                    <p><FontAwesomeIcon icon={faCalendarAlt} className="mr-2 w-3"/>Ends: {new Date(contest.endTime).toLocaleString()}</p>
+                    <p>
+                      <FontAwesomeIcon icon={faCalendarAlt} className="mr-2 w-3"/>
+                      Starts: {new Date(contest.startTime).toLocaleString()}
+                    </p>
+                    <p>
+                      <FontAwesomeIcon icon={faCalendarAlt} className="mr-2 w-3"/>
+                      Ends: {new Date(contest.endTime).toLocaleString()}
+                    </p>
                 </div>
-                {contest.description && <div dangerouslySetInnerHTML={{ __html: contest.description }} className="text-sm text-gray-300 prose prose-sm dark:prose-invert max-w-none mb-4" />}
+                {contest.description && (
+                  <div 
+                    dangerouslySetInnerHTML={{ __html: contest.description }} 
+                    className="text-sm text-gray-300 prose prose-sm dark:prose-invert max-w-none mb-4" 
+                  />
+                )}
             </div>
 
             <h2 className="text-2xl font-semibold text-white mb-6 flex items-center">
-                <FontAwesomeIcon icon={faListCheck} className="mr-3 text-blue-400"/> Contest Problems
+                <FontAwesomeIcon icon={faListCheck} className="mr-3 text-blue-400"/>
+                Contest Problems
             </h2>
             
-            {(!contest.problems || contest.problems.length === 0) && 
-                (contest.status === 'Running' || contest.status === 'Ended') && 
-                <p className="text-gray-400">No problems listed for this contest yet.</p>
-            }
-            
-            {(contest.status === 'Upcoming') && (
+            {contest.status === 'Upcoming' && (
                 <div className="p-6 bg-gray-800 rounded-lg text-center text-gray-400">
                     <FontAwesomeIcon icon={faClock} size="2x" className="mb-3" />
                     <p>Problems will be visible once the contest starts.</p>
                 </div>
             )}
 
-            {(contest.status === 'Running' || contest.status === 'Ended') && contest.problems && contest.problems.length > 0 && (
+            {(contest.status === 'Running' || contest.status === 'Ended') && contest.problems?.length === 0 && (
+                <p className="text-gray-400">No problems listed for this contest yet.</p>
+            )}
+
+            {(contest.status === 'Running' || contest.status === 'Ended') && contest.problems?.length > 0 && (
                 <div className="space-y-4">
-                    {contest.problems.map((contestProblem, index) => {
-                        if (!contestProblem.problemId) {
-                            return (
-                                <div key={`error-problem-${index}`} className="bg-gray-700 p-4 rounded-lg shadow-md text-red-300">
-                                    Problem {index + 1}: Data unavailable.
-                                </div>
-                            );
-                        }
-                        return (
-                            <div key={contestProblem.problemId._id} className="bg-gray-800 p-4 rounded-lg shadow-md flex justify-between items-center">
-                                <div>
-                                    <h3 className="text-lg font-medium text-white">
-                                        {/* Link to problem detail page */}
-                                        <Link to={`/problems/${contestProblem.problemId._id}`} 
-                                              state={{ contestId: contestId, contestTitle: contest.title }} 
-                                              className="hover:text-blue-400">
-                                           {index + 1}. {contestProblem.problemId.title || "Problem Title Missing"}
-                                        </Link>
-                                    </h3>
-                                    <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full border ${getDifficultyColor(contestProblem.problemId.difficulty)} capitalize`}>
-                                        {contestProblem.problemId.difficulty || "N/A"}
-                                    </span>
-                                </div>
-                                {/* Show Solve button only if contest is Running */}
-                                {contest.status === 'Running' && canParticipate && (
-                                    <Button 
-                                        onClick={() => handleSolveProblem(contestProblem.problemId._id)}
-                                        content="Solve"
-                                        className="bg-green-600 hover:bg-green-700 text-sm px-3 py-1.5"
-                                    />
-                                )}
-                                {/* Show View button if contest Ended (or perhaps if already solved) */}
-                                {contest.status === 'Ended' && (
-                                     <Link to={`/problems/${contestProblem.problemId._id}`} 
-                                           state={{ contestId: contestId, contestTitle: contest.title, viewingMode: 'contestEnded' }}> 
-                                         <Button content="View Problem" className="bg-gray-600 hover:bg-gray-500 text-sm px-3 py-1.5"/>
-                                     </Link>
-                                )}
+                    {contest.problems.map((contestProblem, idx) => (
+                        <div 
+                          key={contestProblem.problemId._id} 
+                          className="bg-gray-800 p-4 rounded-lg shadow-md flex justify-between items-center"
+                        >
+                            <div>
+                                <h3 className="text-lg font-medium text-white">
+                                    <Link 
+                                      to={`/contests/${contestId}/problems/${contestProblem.problemId._id}`}
+                                      state={{ contestId, contestTitle: contest.title }}
+                                      className="hover:text-blue-400"
+                                    >
+                                       {idx + 1}. {contestProblem.problemId.title}
+                                    </Link>
+                                </h3>
+                                <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full border ${getDifficultyColor(contestProblem.problemId.difficulty)} capitalize`}>
+                                    {contestProblem.problemId.difficulty}
+                                </span>
                             </div>
-                        );
-                    })}
+                            {contest.status === 'Running' && canParticipate && (
+                                <Button 
+                                    onClick={() => handleSolveProblem(contestProblem.problemId._id)}
+                                    content="Solve"
+                                    className="bg-green-600 hover:bg-green-700 text-sm px-3 py-1.5"
+                                />
+                            )}
+                            {contest.status === 'Ended' && (
+                                <Link 
+                                  to={`/contests/${contestId}/problems/${contestProblem.problemId._id}`} 
+                                  state={{ contestId, contestTitle: contest.title, viewingMode: 'contestEnded' }}
+                                >
+                                  <Button content="View Problem" className="bg-gray-600 hover:bg-gray-500 text-sm px-3 py-1.5"/>
+                                </Link>
+                            )}
+                        </div>
+                    ))}
                 </div>
             )}
         </div>
