@@ -15,9 +15,10 @@ if (!token) throw new ApiError(401, "Unauthorized");
     throw new ApiError(401, "Invalid token");
   }
 
-  const user = await User.findById(payload.id).select("-password");
+  const user = await User.findById(payload._id).select("-password");
   if (!user) throw new ApiError(404, "User not found");
 
   req.user = user;
   next();
 });
+server-side/src/middlewares/verifyJwt.js

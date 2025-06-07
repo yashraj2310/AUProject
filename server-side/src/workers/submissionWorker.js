@@ -167,11 +167,11 @@ const executeSingleTestCaseInDocker = async (
       `WORKER_SUCCESS (${submissionIdForLog}): Successfully wrote stdin to ${inputFilePath}`
     );
 
-    console.log(
-      `WORKER_PAUSE (${submissionIdForLog}): Pausing for 15 seconds. Check directory: ${tempDirHostOs}`
-    );
-    await new Promise((resolve) => setTimeout(resolve, 15000));
-    console.log(`WORKER_PAUSE (${submissionIdForLog}): Resuming...`);
+    // console.log(
+    //   `WORKER_PAUSE (${submissionIdForLog}): Pausing for 15 seconds. Check directory: ${tempDirHostOs}`
+    // );
+    // await new Promise((resolve) => setTimeout(resolve, 15000));
+    // console.log(`WORKER_PAUSE (${submissionIdForLog}): Resuming...`);
 
     const dockerImage = DOCKER_IMAGE_MAP[language.toLowerCase()];
     if (!dockerImage) {

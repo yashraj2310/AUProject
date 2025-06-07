@@ -10,8 +10,11 @@ import { Problem } from '../models/problem.model.js';
 const JWT_SECRET = process.env.JWT_SECRET;
 const cookieOpts = {
   httpOnly: true,
-  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-  secure: process.env.NODE_ENV === 'production',
+  // sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  // secure: process.env.NODE_ENV === 'production',
+  sameSite:'lax',
+  secure:false,
+  path: '/', 
   maxAge: 24 * 60 * 60 * 1000, // 1 day
 };
 
@@ -37,7 +40,7 @@ export const signup = asyncHandler(async (req, res) => {
   });
 
   // Generate JWT and set cookie
-  const token = jwt.sign({ id: newUser._id }, JWT_SECRET);
+  const token = jwt.sign({ _id: newUser._id }, JWT_SECRET);
   res.cookie("token", token, cookieOpts);
 
   // Return user data (without password)
@@ -61,7 +64,7 @@ export const login = asyncHandler(async (req, res) => {
 
   const valid = user && await user.isPasswordCorrect(password);
   if (!valid) throw new ApiError(401, "Invalid credentials");
-  const token = jwt.sign({ id: user._id }, JWT_SECRET);
+  const token = jwt.sign({ _id: user._id }, JWT_SECRET);
   res.cookie("token", token, cookieOpts);
 
   const userData = {
