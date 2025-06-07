@@ -21,4 +21,4 @@ if (!token) throw new ApiError(401, "Unauthorized");
   req.user = user;
   next();
 });
-server-side/src/middlewares/verifyJwt.js
+
