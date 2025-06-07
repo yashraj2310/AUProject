@@ -53,10 +53,10 @@ import {
 
 // --- Constants ---
 const DOCKER_IMAGE_MAP = {
-  cpp: "execution-engine/cpp:latest",
-  java: "execution-engine/java:latest",
-  javascript: "execution-engine/node:latest",
-  python: "execution-engine/python:latest",
+  cpp: "898465023886.dkr.ecr.ap-south-1.amazonaws.com/execution-engine-cpp",
+  java: "898465023886.dkr.ecr.ap-south-1.amazonaws.com/execution-engine-java",
+  javascript: "898465023886.dkr.ecr.ap-south-1.amazonaws.com/execution-engine-nodejs",
+  python: "898465023886.dkr.ecr.ap-south-1.amazonaws.com/execution-engine-python",
 };
 
 const REDIS_CONNECTION_OPTIONS_FOR_WORKER = {
