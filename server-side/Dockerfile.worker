@@ -1,14 +1,12 @@
 # Dockerfile.worker
 FROM node:18-alpine
 
-
-RUN apk add --no-cache docker-cli
+# pull in the client
+RUN apk add --no-cache docker
 
 WORKDIR /app
-
 COPY package*.json ./
 RUN npm ci --only=production
-
 COPY . .
 
 CMD ["node", "src/workers/submissionWorker.js"]
