@@ -10,10 +10,10 @@ import { Problem } from '../models/problem.model.js';
 const JWT_SECRET = process.env.JWT_SECRET;
 const cookieOpts = {
   httpOnly: true,
-  // sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-  // secure: process.env.NODE_ENV === 'production',
-  sameSite:'lax',
-  secure:false,
+ 
+  sameSite:'none',
+  secure:true,
+  domain:   'cohortarena.xyz',
   path: '/', 
   maxAge: 24 * 60 * 60 * 1000, // 1 day
 };

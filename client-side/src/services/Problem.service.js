@@ -1,9 +1,7 @@
 import axios from "axios";
-const API_SERVER_BASE =
-  import.meta.env.VITE_SERVER_ENDPOINT || "http://localhost:5000";
+const API_SERVER_BASE =import.meta.env.VITE_SERVER_ENDPOINT || "http://localhost:5000";
 const PROBLEMS_API_URL = `${API_SERVER_BASE}/problems`;
-// getAuthConfig if needed for any protected problem routes, for now assuming list is public
-// const getAuthConfig = () => ({ withCredentials: true });
+
 export const problemService = {
   list: (filters = {}) => {
     const params = new URLSearchParams();

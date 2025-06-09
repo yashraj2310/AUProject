@@ -26,7 +26,7 @@ async function startServer() {
 
   // CORS
   app.use(cors({
-    origin: process.env.CLIENT_SIDE_ENDPOINT,
+    origin: [ 'https://www.cohortarena.xyz', 'https://cohortarena.xyz' ],
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
   }));
@@ -34,20 +34,20 @@ async function startServer() {
   app.use(express.json({ limit: '1mb' }));
   app.use(express.urlencoded({ extended: true, limit: '1mb' }));
   app.use(cookieParser());
-  app.use(
-  session({
-    name: "refreshToken",
-    secret: process.env.REFRESH_TOKEN_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure: false,      
-      sameSite: "lax",   
-      maxAge: 7 * 24 * 60 * 60 * 1000, 
-    },
-  })
-);
+//   app.use(
+//   session({
+//     name: "refreshToken",
+//     secret: process.env.REFRESH_TOKEN_SECRET,
+//     resave: false,
+//     saveUninitialized: false,
+//     cookie: {
+//       httpOnly: true,
+//       secure: false,      
+//       sameSite: "lax",   
+//       maxAge: 7 * 24 * 60 * 60 * 1000, 
+//     },
+//   })
+// );
 
   // Public
   app.use('/user', userRouter);
