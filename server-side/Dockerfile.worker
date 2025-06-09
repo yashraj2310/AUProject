@@ -1,11 +1,10 @@
 FROM node:18-alpine
 
-# install the Docker CLI
-RUN apk add --no-cache docker-cli
+RUN apk update && apk add --no-cache docker
 
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --only=production
 COPY . .
 
-CMD ["node", "src/workers/submissionWorker.js"]
+CMD ["node","src/workers/submissionWorker.js"]
