@@ -1,10 +1,15 @@
-FROM node:18-alpine
+# Dockerfile.worker
+FROM node:18-bullseye-slim
 
-RUN apk update && apk add --no-cache docker
+# install the Docker CLI
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends docker.io \
+ && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --only=production
+
 COPY . .
 
-CMD ["node","src/workers/submissionWorker.js"]
+CMD ["node", "src/workers/submissionWorker.js"]
