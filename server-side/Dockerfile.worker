@@ -1,8 +1,7 @@
-# Dockerfile.worker
 FROM node:18-alpine
 
-# pull in the client
-RUN apk add --no-cache docker
+# install the Docker CLI
+RUN apk add --no-cache docker-cli
 
 WORKDIR /app
 COPY package*.json ./
