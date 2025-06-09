@@ -1,6 +1,8 @@
 # server-side/Dockerfile.worker
 FROM node:18-alpine
 
+RUN apk add --no-cache docker-cli
+
 WORKDIR /app
 
 # install your dependencies

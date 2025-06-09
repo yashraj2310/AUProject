@@ -1,9 +1,4 @@
-// src/workers/submissionWorker.js
-// ----------------------------------------------------------------
-// Loads env, connects to Mongo & Redis, then spins up a BullMQ
-// Worker that runs submissions in per-test Docker containers via
-// dockerode instead of spawning a `docker` CLI.
-// ----------------------------------------------------------------
+
 
 import dotenv from "dotenv";
 import path from "path";
@@ -39,7 +34,6 @@ console.log(
   process.env.WORKER_CONCURRENCY || "1"
 );
 
-// map your languages to execution-engine images
 const DOCKER_IMAGE_MAP = {
   cpp: "898465023886.dkr.ecr.ap-south-1.amazonaws.com/execution-engine-cpp",
   java: "898465023886.dkr.ecr.ap-south-1.amazonaws.com/execution-engine-java",
