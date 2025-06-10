@@ -1,102 +1,70 @@
 #!/bin/bash
 
-# Script arguments
-CODE_FILENAME_MOUNTED_PATH="/sandbox/script.js" # Standard name for Node.js scripts
-INPUT_FILENAME_MOUNTED_PATH="/sandbox/input.txt"
-
+# Arguments from the worker
 TIME_LIMIT_SECONDS=$1
-MEMORY_LIMIT_KB=$2 # Node.js memory can be controlled via --max-old-space-size, but /usr/bin/time is primary here
+MEMORY_LIMIT_KB=$2
+SOURCE_FILE_BASENAME=$3 # e.g., "script.js"
 
-INTERNAL_EXEC_DIR="$HOME/exec_space_js"
+# --- Setup ---
+SANDBOX_DIR="/sandbox"
+INPUT_FILE="${SANDBOX_DIR}/input.txt"
+SEPARATOR="---|||---"
 
-# --- Output Structure (STATUS, TIME_SEC, MEMORY_KB, DETAILS_...) ---
+# Work directly in the sandbox
+cd "$SANDBOX_DIR"
 
-mkdir -p "$INTERNAL_EXEC_DIR"
-cd "$INTERNAL_EXEC_DIR"
+# --- Execution ---
+USER_STDOUT_FILE="user_stdout.txt"
+USER_STDERR_FILE="user_stderr.txt"
+STATS_FILE="stats.txt"
 
-CODE_FILENAME_INTERNAL="script.js"
-INPUT_FILENAME_INTERNAL="input.txt"
-USER_STDOUT_FILENAME="user_stdout.txt"
-USER_STDERR_FILENAME="user_stderr.txt"
-# No COMPILE_LOG_FILENAME for Node.js
-STATS_FILENAME="stats.txt"
+# Node.js memory is best controlled with --max-old-space-size.
+# We also use ulimit as a hard-stop safety measure.
+MEMORY_LIMIT_MB=$((MEMORY_LIMIT_KB / 1024))
 
-# Check and copy mounted files
-if [ ! -f "$CODE_FILENAME_MOUNTED_PATH" ]; then
-  echo "RUNTIME_ERROR"; echo "0.00"; echo "0"; echo "Error: Source code (script.js) not found."
-  exit 0
-fi
-if [ ! -f "$INPUT_FILENAME_MOUNTED_PATH" ]; then
-  echo "RUNTIME_ERROR"; echo "0.00"; echo "0"; echo "Error: Input file (input.txt) not found."
-  exit 0
-fi
-cp "$CODE_FILENAME_MOUNTED_PATH" "./$CODE_FILENAME_INTERNAL"
-cp "$INPUT_FILENAME_MOUNTED_PATH" "./$INPUT_FILENAME_INTERNAL"
-
-# 1. Execution Phase for Node.js (No separate compile step)
-EFFECTIVE_TIME_LIMIT=$(echo "$TIME_LIMIT_SECONDS + 0.2" | bc) # Node might have slight startup
-
-# Node.js memory can be limited with --max-old-space-size=<MB>
-# We'll primarily rely on Docker's --memory and /usr/bin/time for measurement.
-# NODE_OPTIONS="--max-old-space-size=$(($MEMORY_LIMIT_KB / 1024 - 16))" # Example, if desired
-
-/usr/bin/timeout -s KILL "${EFFECTIVE_TIME_LIMIT}s" \
-    /usr/bin/time -f "%e %M" -o "$STATS_FILENAME" \
-    node "$CODE_FILENAME_INTERNAL" < "$INPUT_FILENAME_INTERNAL" > "$USER_STDOUT_FILENAME" 2> "$USER_STDERR_FILENAME"
-    # Or with NODE_OPTIONS:
-    # env NODE_OPTIONS="$NODE_OPTIONS" node "$CODE_FILENAME_INTERNAL" < ...
-
+(
+  ulimit -v "${MEMORY_LIMIT_KB}";
+  /usr/bin/time -f "%e %M" -o "${STATS_FILE}" \
+  timeout -s KILL "${TIME_LIMIT_SECONDS}s" \
+  node --max-old-space-size="${MEMORY_LIMIT_MB}" "${SOURCE_FILE_BASENAME}" < "${INPUT_FILE}" > "${USER_STDOUT_FILE}" 2> "${USER_STDERR_FILE}"
+)
 EXECUTION_EXIT_CODE=$?
 
+# --- 3. Result Processing ---
 EXEC_TIME_SECONDS="0.00"
 PEAK_MEMORY_KB="0"
-if [ -f "$STATS_FILENAME" ]; then # Parse stats
-    STATS_CONTENT=$(cat "$STATS_FILENAME")
-    EXEC_TIME_SECONDS=$(echo "$STATS_CONTENT" | awk '{print $1}')
-    PEAK_MEMORY_KB=$(echo "$STATS_CONTENT" | awk '{print $2}')
-    EXEC_TIME_SECONDS=${EXEC_TIME_SECONDS:-0.00}; PEAK_MEMORY_KB=${PEAK_MEMORY_KB:-0}
-    if ! [[ "$EXEC_TIME_SECONDS" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then EXEC_TIME_SECONDS="0.00"; fi
-    if ! [[ "$PEAK_MEMORY_KB" =~ ^[0-9]+$ ]]; then PEAK_MEMORY_KB="0"; fi
+
+# Safely read the stats file
+if [ -f "$STATS_FILE" ]; then
+    read -r EXEC_TIME_SECONDS PEAK_MEMORY_KB < "$STATS_FILE"
+    EXEC_TIME_SECONDS=${EXEC_TIME_SECONDS:-0}
+    PEAK_MEMORY_KB=${PEAK_MEMORY_KB:-0}
 fi
 
-# 2. Determine Status
-# Since there's no compile step, a "Compilation Error" won't occur in the same way.
-# Syntax errors in JS will result in a non-zero exit code and output to stderr directly.
+STATUS=""
+FINAL_OUTPUT=""
 
-if [ $EXECUTION_EXIT_CODE -eq 124 ] || [ $EXECUTION_EXIT_CODE -eq 137 ]; then # Timeout or killed
-  if (( $(echo "$EXEC_TIME_SECONDS >= $TIME_LIMIT_SECONDS * 0.99" | bc -l) )); then
-    echo "TIME_LIMIT_EXCEEDED"; echo "$TIME_LIMIT_SECONDS"; echo "$PEAK_MEMORY_KB"; cat "$USER_STDERR_FILENAME"
-    exit 0
-  fi
-  # Could be OOM killed by Docker or other signal
-  if [ "$PEAK_MEMORY_KB" -gt $(($MEMORY_LIMIT_KB * 95 / 100)) ]; then
-    echo "MEMORY_LIMIT_EXCEEDED"; echo "$EXEC_TIME_SECONDS"; echo "$PEAK_MEMORY_KB"; cat "$USER_STDERR_FILENAME"
-    exit 0
-  else
-    echo "RUNTIME_ERROR"; echo "$EXEC_TIME_SECONDS"; echo "$PEAK_MEMORY_KB"
-    echo "Node.js program terminated with signal or unusual exit code ($EXECUTION_EXIT_CODE)."
-    cat "$USER_STDERR_FILENAME"
-    exit 0
-  fi
+# Determine the final status (identical logic to the other scripts)
+if [ "$EXECUTION_EXIT_CODE" -eq 137 ] || [ "$EXECUTION_EXIT_CODE" -eq 124 ]; then
+    STATUS="TIME_LIMIT_EXCEEDED"
+    FINAL_OUTPUT=$(cat "$USER_STDERR_FILE")
+    EXEC_TIME_SECONDS=$TIME_LIMIT_SECONDS
+elif [ "$PEAK_MEMORY_KB" -gt "$MEMORY_LIMIT_KB" ]; then
+    STATUS="MEMORY_LIMIT_EXCEEDED"
+    FINAL_OUTPUT=$(cat "$USER_STDERR_FILE")
+elif [ "$EXECUTION_EXIT_CODE" -ne 0 ]; then
+    STATUS="RUNTIME_ERROR"
+    FINAL_OUTPUT=$(cat "$USER_STDERR_FILE")
+else
+    STATUS="EXECUTED_SUCCESSFULLY"
+    FINAL_OUTPUT=$(cat "$USER_STDOUT_FILE")
 fi
 
-if [ "$PEAK_MEMORY_KB" -gt "$MEMORY_LIMIT_KB" ]; then # Heuristic MLE from /usr/bin/time
-    echo "MEMORY_LIMIT_EXCEEDED"; echo "$EXEC_TIME_SECONDS"; echo "$PEAK_MEMORY_KB"; cat "$USER_STDERR_FILENAME"
-    exit 0
-fi
+# Print the final standardized output for the worker
+echo "${STATUS}"
+echo "${EXEC_TIME_SECONDS}"
+echo "${PEAK_MEMORY_KB}"
+echo "${SEPARATOR}"
+echo -n "${FINAL_OUTPUT}"
 
-if [ $EXECUTION_EXIT_CODE -ne 0 ]; then # Any other non-zero exit usually means runtime error (incl. syntax errors)
-  echo "RUNTIME_ERROR" # JS Syntax errors will appear here
-  echo "$EXEC_TIME_SECONDS"
-  echo "$PEAK_MEMORY_KB"
-  echo "Node.js program exited with non-zero status: $EXECUTION_EXIT_CODE."
-  cat "$USER_STDERR_FILENAME" # This will contain JS stack traces or syntax error messages
-  exit 0
-fi
-
-# If all checks passed
-echo "EXECUTED_SUCCESSFULLY"
-echo "$EXEC_TIME_SECONDS"
-echo "$PEAK_MEMORY_KB"
-cat "$USER_STDOUT_FILENAME"
 exit 0

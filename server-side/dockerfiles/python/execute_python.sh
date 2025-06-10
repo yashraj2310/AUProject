@@ -1,79 +1,69 @@
 #!/bin/bash
 
-CODE_FILENAME_MOUNTED_PATH="/sandbox/script.py"
-INPUT_FILENAME_MOUNTED_PATH="/sandbox/input.txt"
+# Arguments from the worker
 TIME_LIMIT_SECONDS=$1
-MEMORY_LIMIT_KB=$2 # Python memory can be harder to strictly limit internally
+MEMORY_LIMIT_KB=$2
+SOURCE_FILE_BASENAME=$3 # e.g., "script.py"
 
-INTERNAL_EXEC_DIR="$HOME/exec_space_py"
-mkdir -p "$INTERNAL_EXEC_DIR"; cd "$INTERNAL_EXEC_DIR"
+# --- Setup ---
+SANDBOX_DIR="/sandbox"
+INPUT_FILE="${SANDBOX_DIR}/input.txt"
+SEPARATOR="---|||---"
 
-CODE_FILENAME_INTERNAL="script.py"
-INPUT_FILENAME_INTERNAL="input.txt"
-USER_STDOUT_FILENAME="user_stdout.txt"
-USER_STDERR_FILENAME="user_stderr.txt"
-STATS_FILENAME="stats.txt"
+# Work directly in the sandbox; no need for subdirectories or copying
+cd "$SANDBOX_DIR"
 
-if [ ! -f "$CODE_FILENAME_MOUNTED_PATH" ]; then
-  echo "RUNTIME_ERROR"; echo "0.00"; echo "0"; echo "Error: Source code (script.py) not found."
-  exit 0
-fi
-if [ ! -f "$INPUT_FILENAME_MOUNTED_PATH" ]; then
-  echo "RUNTIME_ERROR"; echo "0.00"; echo "0"; echo "Error: Input file (input.txt) not found."
-  exit 0
-fi
-cp "$CODE_FILENAME_MOUNTED_PATH" "./$CODE_FILENAME_INTERNAL"
-cp "$INPUT_FILENAME_MOUNTED_PATH" "./$INPUT_FILENAME_INTERNAL"
+# --- Execution ---
+USER_STDOUT_FILE="user_stdout.txt"
+USER_STDERR_FILE="user_stderr.txt"
+STATS_FILE="stats.txt"
 
-EFFECTIVE_TIME_LIMIT=$(echo "$TIME_LIMIT_SECONDS + 0.1" | bc)
-
-/usr/bin/timeout -s KILL "${EFFECTIVE_TIME_LIMIT}s" \
-    /usr/bin/time -f "%e %M" -o "$STATS_FILENAME" \
-    python3 "$CODE_FILENAME_INTERNAL" < "$INPUT_FILENAME_INTERNAL" > "$USER_STDOUT_FILENAME" 2> "$USER_STDERR_FILENAME"
-    # Use python3 explicitly, or just python if the image defaults correctly
-
+# Run the python script within a subshell with resource limits
+(
+  # ulimit is a good safety net for memory, though Python's errors are more descriptive
+  ulimit -v "${MEMORY_LIMIT_KB}";
+  /usr/bin/time -f "%e %M" -o "${STATS_FILE}" \
+  timeout -s KILL "${TIME_LIMIT_SECONDS}s" \
+  python3 "${SOURCE_FILE_BASENAME}" < "${INPUT_FILE}" > "${USER_STDOUT_FILE}" 2> "${USER_STDERR_FILE}"
+)
 EXECUTION_EXIT_CODE=$?
 
-EXEC_TIME_SECONDS="0.00"; PEAK_MEMORY_KB="0"
-if [ -f "$STATS_FILENAME" ]; then
-    STATS_CONTENT=$(cat "$STATS_FILENAME"); EXEC_TIME_SECONDS=$(echo "$STATS_CONTENT" | awk '{print $1}')
-    PEAK_MEMORY_KB=$(echo "$STATS_CONTENT" | awk '{print $2}'); EXEC_TIME_SECONDS=${EXEC_TIME_SECONDS:-0.00}
+# --- Result Processing ---
+EXEC_TIME_SECONDS="0.00"
+PEAK_MEMORY_KB="0"
+
+# Safely read the stats file
+if [ -f "$STATS_FILE" ]; then
+    read -r EXEC_TIME_SECONDS PEAK_MEMORY_KB < "$STATS_FILE"
+    EXEC_TIME_SECONDS=${EXEC_TIME_SECONDS:-0}
     PEAK_MEMORY_KB=${PEAK_MEMORY_KB:-0}
-    if ! [[ "$EXEC_TIME_SECONDS" =~ ^[0-9]+(\.[0-9]+)?$ ]]; then EXEC_TIME_SECONDS="0.00"; fi
-    if ! [[ "$PEAK_MEMORY_KB" =~ ^[0-9]+$ ]]; then PEAK_MEMORY_KB="0"; fi
 fi
 
-# Status Determination (similar to Node.js, as Python syntax errors also become runtime errors)
-if [ $EXECUTION_EXIT_CODE -eq 124 ] || [ $EXECUTION_EXIT_CODE -eq 137 ]; then
-  if (( $(echo "$EXEC_TIME_SECONDS >= $TIME_LIMIT_SECONDS * 0.99" | bc -l) )); then
-    echo "TIME_LIMIT_EXCEEDED"; echo "$TIME_LIMIT_SECONDS"; echo "$PEAK_MEMORY_KB"; cat "$USER_STDERR_FILENAME"
-    exit 0
-  fi
-  if [ "$PEAK_MEMORY_KB" -gt $(($MEMORY_LIMIT_KB * 95 / 100)) ]; then
-    echo "MEMORY_LIMIT_EXCEEDED"; echo "$EXEC_TIME_SECONDS"; echo "$PEAK_MEMORY_KB"; cat "$USER_STDERR_FILENAME"
-    exit 0
-  else
-    echo "RUNTIME_ERROR"; echo "$EXEC_TIME_SECONDS"; echo "$PEAK_MEMORY_KB"
-    echo "Python program terminated with signal or unusual exit code ($EXECUTION_EXIT_CODE)."
-    cat "$USER_STDERR_FILENAME"
-    exit 0
-  fi
+STATUS=""
+FINAL_OUTPUT=""
+
+# Determine the final status using the standardized logic
+if [ "$EXECUTION_EXIT_CODE" -eq 137 ] || [ "$EXECUTION_EXIT_CODE" -eq 124 ]; then
+    STATUS="TIME_LIMIT_EXCEEDED"
+    FINAL_OUTPUT=$(cat "$USER_STDERR_FILE")
+    EXEC_TIME_SECONDS=$TIME_LIMIT_SECONDS
+elif [ "$PEAK_MEMORY_KB" -gt "$MEMORY_LIMIT_KB" ]; then
+    STATUS="MEMORY_LIMIT_EXCEEDED"
+    FINAL_OUTPUT=$(cat "$USER_STDERR_FILE")
+elif [ "$EXECUTION_EXIT_CODE" -ne 0 ]; then
+    # This catches both syntax errors and runtime errors in Python
+    STATUS="RUNTIME_ERROR"
+    FINAL_OUTPUT=$(cat "$USER_STDERR_FILE")
+else
+    STATUS="EXECUTED_SUCCESSFULLY"
+    FINAL_OUTPUT=$(cat "$USER_STDOUT_FILE")
 fi
 
-if [ "$PEAK_MEMORY_KB" -gt "$MEMORY_LIMIT_KB" ]; then
-    echo "MEMORY_LIMIT_EXCEEDED"; echo "$EXEC_TIME_SECONDS"; echo "$PEAK_MEMORY_KB"; cat "$USER_STDERR_FILENAME"
-    exit 0
-fi
+# Print the final standardized output for the worker
+echo "${STATUS}"
+echo "${EXEC_TIME_SECONDS}"
+echo "${PEAK_MEMORY_KB}"
+echo "${SEPARATOR}"
+echo -n "${FINAL_OUTPUT}"
 
-if [ $EXECUTION_EXIT_CODE -ne 0 ]; then
-  echo "RUNTIME_ERROR" # Python Syntax errors also result in non-zero exit and stderr output
-  echo "$EXEC_TIME_SECONDS"; echo "$PEAK_MEMORY_KB"
-  echo "Python program exited with non-zero status: $EXECUTION_EXIT_CODE."
-  cat "$USER_STDERR_FILENAME" # Will contain Python stack traces or syntax error details
-  exit 0
-fi
-
-echo "EXECUTED_SUCCESSFULLY"
-echo "$EXEC_TIME_SECONDS"; echo "$PEAK_MEMORY_KB"
-cat "$USER_STDOUT_FILENAME"
 exit 0
