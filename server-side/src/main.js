@@ -26,7 +26,8 @@ async function startServer() {
 
   // CORS
   app.use(cors({
-    origin: [ 'https://www.cohortarena.xyz', 'https://cohortarena.xyz' ],
+    // origin: [ 'https://www.cohortarena.xyz', 'https://cohortarena.xyz' ],
+    origin: process.env.CLIENT_SIDE_ENDPOINT,
     credentials: true,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
   }));

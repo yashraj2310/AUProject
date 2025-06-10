@@ -1,16 +1,13 @@
-# server-side/Dockerfile.worker
-FROM node:18-alpine
-
-RUN apk add --no-cache docker-cli
+FROM node:18-alpine as builder
 
 WORKDIR /app
-
-# install your dependencies
 COPY package*.json ./
 RUN npm ci --only=production
-
-# copy your code
 COPY . .
 
-# start the worker
+FROM docker:24-cli-alpine
+
+WORKDIR /app
+COPY --from=builder /app /app
+
 CMD ["node", "src/workers/submissionWorker.js"]
