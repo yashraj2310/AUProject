@@ -11,11 +11,11 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const cookieOpts = {
   httpOnly: true,
  
-  // sameSite:'none',
-  secure: false, 
-  sameSite:'lax',
-  // secure:true,
-  // domain:   'cohortarena.xyz',
+  sameSite:'none',
+  // secure: false, 
+  // sameSite:'lax',
+  secure:true,
+  domain:   'cohortarena.xyz',
 
   path: '/', 
   maxAge: 24 * 60 * 60 * 1000, // 1 day
