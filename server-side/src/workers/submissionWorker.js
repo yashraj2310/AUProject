@@ -8,6 +8,7 @@ import os from 'os';
 import Docker from 'dockerode';
 import IORedis from 'ioredis';
 import { Worker } from 'bullmq';
+import { PassThrough } from 'stream';
 
 // Models & Utils
 import connectDB from '../database/db.js';
@@ -66,7 +67,7 @@ function getCodeFileName(lang) {
   }
 }
 
-// ── Core: execute test case in Docker via Dockerode ──
+// ── Core: execute test case via Dockerode ────────────
 async function executeSingleTestCaseInDocker(
   language,
   code,
@@ -78,7 +79,7 @@ async function executeSingleTestCaseInDocker(
   let tempDir;
   let container;
   try {
-    // 1) Prepare workspace
+    // Setup workspace
     tempDir = await fs.mkdtemp(
       path.join(os.tmpdir(), `sub-${submissionIdForLog.toString().slice(-6)}-exec-`)
     );
@@ -87,12 +88,12 @@ async function executeSingleTestCaseInDocker(
     await fs.writeFile(codeFile, code);
     await fs.writeFile(inputFile, stdin || '');
 
-    // 2) Determine image and limits
+    // Select image and limits
     const image = DOCKER_IMAGE_MAP[language.toLowerCase()];
     if (!image) throw new Error(`Unsupported language: ${language}`);
     const memBytes = memoryLimitKB * 1024;
 
-    // 3) Create container
+    // Create container (keep container around until cleanup)
     container = await docker.createContainer({
       Image: image,
       HostConfig: {
@@ -108,14 +109,20 @@ async function executeSingleTestCaseInDocker(
       Cmd: [String(timeLimitSec), String(memoryLimitKB)],
     });
 
-    // 4) Start and capture output
+    // Start & attach multiplexed stream
     await container.start();
     const stream = await container.attach({ stream: true, stdout: true, stderr: true });
+
+    const stdout = new PassThrough();
+    const stderr = new PassThrough();
+    container.modem.demuxStream(stream, stdout, stderr);
+
     let rawOutput = '';
-    stream.on('data', chunk => { rawOutput += chunk.toString(); });
+    stdout.on('data', chunk => rawOutput += chunk.toString());
+
     await container.wait();
 
-    // 5) Parse output
+    // Parse output
     const lines = rawOutput.split('\n');
     const statusLine = (lines[0] || '').trim() || 'UNKNOWN';
     let scriptTime = parseFloat((lines[1] || '').trim());
@@ -129,7 +136,7 @@ async function executeSingleTestCaseInDocker(
     console.error(`WORKER_ERROR (${submissionIdForLog}):`, err);
     return { scriptStatus: 'DOCKER_RUNTIME_ERROR', scriptTime: 0, scriptMemory: 0, scriptOutput: err.message, dockerRawStderr: '' };
   } finally {
-    // Cleanup: remove container and temp directory
+    // Cleanup container and tempDir
     if (container) {
       try { await container.remove({ force: true }); } catch {};
     }
@@ -174,7 +181,7 @@ async function processSubmissionJob(job) {
       verdict: `Running Test Case ${i + 1}/${testCases.length}`,
     });
 
-    const execRes = await executeSingleTestCaseInDocker(
+    const res = await executeSingleTestCaseInDocker(
       submission.language,
       submission.code,
       tc.input,
@@ -183,21 +190,21 @@ async function processSubmissionJob(job) {
       submissionId
     );
 
-    maxTime = Math.max(maxTime, execRes.scriptTime);
-    maxMemory = Math.max(maxMemory, execRes.scriptMemory);
+    maxTime = Math.max(maxTime, res.scriptTime);
+    maxMemory = Math.max(maxMemory, res.scriptMemory);
 
     let status;
-    if (execRes.scriptStatus === 'COMPILATION_ERROR') {
+    if (res.scriptStatus === 'COMPILATION_ERROR') {
       status = 'Compilation Error';
       overallVerdict = 'Compilation Error';
-      finalCompile = execRes.scriptOutput;
-      finalErr = execRes.scriptOutput;
-    } else if (execRes.scriptStatus === 'DOCKER_RUNTIME_ERROR') {
+      finalCompile = res.scriptOutput;
+      finalErr = res.scriptOutput;
+    } else if (res.scriptStatus === 'DOCKER_RUNTIME_ERROR') {
       status = 'Internal System Error';
       overallVerdict = 'Internal System Error';
-      finalErr = execRes.scriptOutput;
-    } else if (execRes.scriptStatus === 'EXECUTED_SUCCESSFULLY') {
-      const out = execRes.scriptOutput.trim();
+      finalErr = res.scriptOutput;
+    } else if (res.scriptStatus === 'EXECUTED_SUCCESSFULLY') {
+      const out = res.scriptOutput.trim();
       const exp = (tc.expectedOutput || '').trim();
       status = out === exp ? 'Accepted' : 'Wrong Answer';
       if (status === 'Wrong Answer') {
@@ -207,16 +214,16 @@ async function processSubmissionJob(job) {
     } else {
       status = 'Internal System Error';
       overallVerdict = 'Internal System Error';
-      finalErr = execRes.scriptOutput;
+      finalErr = res.scriptOutput;
     }
 
     results.push({
       input: tc.input,
       expectedOutput: tc.expectedOutput,
-      actualOutput: execRes.scriptOutput,
+      actualOutput: res.scriptOutput,
       status,
-      time: execRes.scriptTime,
-      memory: execRes.scriptMemory,
+      time: res.scriptTime,
+      memory: res.scriptMemory,
       isSample: tc.isSample,
       isCustom: tc.isCustom,
     });
@@ -229,9 +236,9 @@ async function processSubmissionJob(job) {
     testCaseResults: results,
     executionTime: maxTime,
     memoryUsed: maxMemory,
-  };
+  }; 
   if (finalCompile) updateData.compileOutput = finalCompile;
-  if (finalErr) updateData.stderr = finalErr;
+  if (finalErr)     updateData.stderr        = finalErr;
 
   await Submission.findByIdAndUpdate(submissionId, updateData);
 
