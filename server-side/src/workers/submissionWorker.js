@@ -8,7 +8,6 @@ import os from 'os';
 import Docker from 'dockerode';
 import IORedis from 'ioredis';
 import { Worker } from 'bullmq';
-import mongoose from 'mongoose';
 
 // Models & Utils
 import connectDB from '../database/db.js';
@@ -27,28 +26,19 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 console.log('🚀 Submission worker using Dockerode initialized');
-console.log(
-  'WORKER ENV: Loaded MONGO_URI:',
-  process.env.MONGO_URI ? 'OK (value not shown)' : 'MISSING!'
-);
-console.log('WORKER ENV: Loaded REDIS_HOST:', process.env.REDIS_HOST || '127.0.0.1');
-console.log('WORKER ENV: Loaded REDIS_PORT:', process.env.REDIS_PORT || '6379');
-console.log(
-  'WORKER ENV: Loaded DOCKER_CONTAINER_UID:',
-  process.env.DOCKER_CONTAINER_UID || '1001'
-);
-console.log(
-  'WORKER ENV: Loaded WORKER_CONCURRENCY:',
-  process.env.WORKER_CONCURRENCY || '1'
-);
+console.log('WORKER ENV: Loaded MONGO_URI:', process.env.MONGO_URI ? 'OK' : 'MISSING!');
+console.log('WORKER ENV: Loaded REDIS_HOST:', process.env.REDIS_HOST);
+console.log('WORKER ENV: Loaded REDIS_PORT:', process.env.REDIS_PORT);
+console.log('WORKER ENV: Loaded DOCKER_CONTAINER_UID:', process.env.DOCKER_CONTAINER_UID);
+console.log('WORKER ENV: Loaded WORKER_CONCURRENCY:', process.env.WORKER_CONCURRENCY);
 
 // ── Dockerode Client ────────────────────────────────
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
 
 // ── Redis Connection Options ─────────────────────────
 const REDIS_CONN_OPTS = {
-  host: process.env.REDIS_HOST || '127.0.0.1',
-  port: parseInt(process.env.REDIS_PORT || '6379', 10),
+  host: process.env.REDIS_HOST,
+  port: parseInt(process.env.REDIS_PORT, 10),
   maxRetriesPerRequest: null,
   enableReadyCheck: false,
 };
@@ -65,7 +55,7 @@ const DOCKER_IMAGE_MAP = {
 };
 
 // ── Helpers ──────────────────────────────────────────
-const getCodeFileName = (lang) => {
+function getCodeFileName(lang) {
   switch (lang.toLowerCase()) {
     case 'cpp': return 'Main.cpp';
     case 'c': return 'Main.c';
@@ -74,7 +64,7 @@ const getCodeFileName = (lang) => {
     case 'javascript': return 'script.js';
     default: throw new Error(`Unsupported language: ${lang}`);
   }
-};
+}
 
 // ── Core: execute test case in Docker via Dockerode ──
 async function executeSingleTestCaseInDocker(
@@ -86,86 +76,66 @@ async function executeSingleTestCaseInDocker(
   submissionIdForLog
 ) {
   let tempDir;
+  let container;
   try {
-    // 1) Create temp directory and write files
+    // 1) Prepare workspace
     tempDir = await fs.mkdtemp(
       path.join(os.tmpdir(), `sub-${submissionIdForLog.toString().slice(-6)}-exec-`)
     );
     const codeFile = path.join(tempDir, getCodeFileName(language));
     const inputFile = path.join(tempDir, 'input.txt');
-
     await fs.writeFile(codeFile, code);
     await fs.writeFile(inputFile, stdin || '');
 
-    // 2) Docker image & resource limits
+    // 2) Determine image and limits
     const image = DOCKER_IMAGE_MAP[language.toLowerCase()];
-    if (!image) {
-      return {
-        scriptStatus: 'INTERNAL_SYSTEM_ERROR',
-        scriptTime: 0,
-        scriptMemory: 0,
-        scriptOutput: `Unsupported language: ${language}`,
-        dockerRawStderr: '',
-      };
-    }
+    if (!image) throw new Error(`Unsupported language: ${language}`);
     const memBytes = memoryLimitKB * 1024;
 
     // 3) Create container
-    const container = await docker.createContainer({
+    container = await docker.createContainer({
       Image: image,
       HostConfig: {
-        AutoRemove: true,
+        AutoRemove: false,
         NetworkMode: 'none',
         Memory: memBytes,
         MemorySwap: memBytes,
         PidsLimit: 128,
         Binds: [`${tempDir}:/sandbox`],
-        User: process.env.DOCKER_CONTAINER_UID || '1001',
+        User: process.env.DOCKER_CONTAINER_UID,
       },
       WorkingDir: '/sandbox',
       Cmd: [String(timeLimitSec), String(memoryLimitKB)],
     });
 
-    // 4) Start & attach
+    // 4) Start and capture output
     await container.start();
     const stream = await container.attach({ stream: true, stdout: true, stderr: true });
     let rawOutput = '';
-    stream.on('data', (chunk) => { rawOutput += chunk.toString(); });
-
-    // 5) Wait for finish
+    stream.on('data', chunk => { rawOutput += chunk.toString(); });
     await container.wait();
 
-    // 6) Parse output lines safely
+    // 5) Parse output
     const lines = rawOutput.split('\n');
-    const statusLine = (lines[0] || '').trim();
+    const statusLine = (lines[0] || '').trim() || 'UNKNOWN';
     let scriptTime = parseFloat((lines[1] || '').trim());
-    if (Number.isNaN(scriptTime)) scriptTime = 0;
     let scriptMemory = parseInt((lines[2] || '').trim(), 10);
-    if (Number.isNaN(scriptMemory)) scriptMemory = 0;
+    if (isNaN(scriptTime)) scriptTime = 0;
+    if (isNaN(scriptMemory)) scriptMemory = 0;
     const scriptOutput = lines.slice(3).join('\n');
 
-    return {
-      scriptStatus: statusLine || 'UNKNOWN_SCRIPT_OUTPUT',
-      scriptTime,
-      scriptMemory,
-      scriptOutput,
-      dockerRawStderr: '',
-    };
-
+    return { scriptStatus: statusLine, scriptTime, scriptMemory, scriptOutput, dockerRawStderr: '' };
   } catch (err) {
-    console.error(
-      `WORKER_ERROR (${submissionIdForLog}): Dockerode error:`,
-      err
-    );
-    return {
-      scriptStatus: 'DOCKER_RUNTIME_ERROR',
-      scriptTime: 0,
-      scriptMemory: 0,
-      scriptOutput: err.message,
-      dockerRawStderr: '',
-    };
+    console.error(`WORKER_ERROR (${submissionIdForLog}):`, err);
+    return { scriptStatus: 'DOCKER_RUNTIME_ERROR', scriptTime: 0, scriptMemory: 0, scriptOutput: err.message, dockerRawStderr: '' };
   } finally {
-    // Optional: cleanup tempDir
+    // Cleanup: remove container and temp directory
+    if (container) {
+      try { await container.remove({ force: true }); } catch {};
+    }
+    if (tempDir) {
+      try { await fs.rm(tempDir, { recursive: true, force: true }); } catch {};
+    }
   }
 }
 
@@ -174,11 +144,9 @@ async function processSubmissionJob(job) {
   const { submissionId } = job.data;
   console.log(`Worker: Starting job ${job.id} for submission ${submissionId}`);
 
-  // Fetch submission & problem
   const submission = await Submission.findById(submissionId);
-  const problem    = await Problem.findById(submission.problemId).select('+testCases');
+  const problem = await Problem.findById(submission.problemId).select('+testCases');
 
-  // Initialize DB update
   await Submission.findByIdAndUpdate(submissionId, {
     verdict: 'Compiling',
     testCaseResults: [],
@@ -189,8 +157,10 @@ async function processSubmissionJob(job) {
   });
 
   let overallVerdict = 'Accepted';
-  let maxTime = 0, maxMemory = 0;
-  let finalCompileOutput = null, finalStderr = null;
+  let maxTime = 0;
+  let maxMemory = 0;
+  let finalCompile = null;
+  let finalErr = null;
   const results = [];
 
   const testCases =
@@ -198,10 +168,10 @@ async function processSubmissionJob(job) {
       ? problem.testCases.filter(tc => tc.isSample)
       : problem.testCases;
 
-  for (let i = 0; i < testCases.length; i++) {
+  for (let i = 0; i < testCases.length; ++i) {
     const tc = testCases[i];
     await Submission.findByIdAndUpdate(submissionId, {
-      verdict: `Running Test Case ${i+1}/${testCases.length}`
+      verdict: `Running Test Case ${i + 1}/${testCases.length}`,
     });
 
     const execRes = await executeSingleTestCaseInDocker(
@@ -209,39 +179,35 @@ async function processSubmissionJob(job) {
       submission.code,
       tc.input,
       problem.cpuTimeLimit || 2,
-      problem.memoryLimit    || 128000,
+      problem.memoryLimit || 128000,
       submissionId
     );
 
-    maxTime   = Math.max(maxTime, execRes.scriptTime);
+    maxTime = Math.max(maxTime, execRes.scriptTime);
     maxMemory = Math.max(maxMemory, execRes.scriptMemory);
 
     let status;
-    switch (execRes.scriptStatus) {
-      case 'COMPILATION_ERROR':
-        status = 'Compilation Error';
-        finalCompileOutput = execRes.scriptOutput;
-        overallVerdict = 'Compilation Error';
-        finalStderr = execRes.scriptOutput;
-        break;
-      case 'DOCKER_RUNTIME_ERROR':
-        status = 'Internal System Error';
-        overallVerdict = 'Internal System Error';
-        finalStderr = execRes.scriptOutput;
-        break;
-      case 'EXECUTED_SUCCESSFULLY':
-        const out = execRes.scriptOutput.trim();
-        const exp = (tc.expectedOutput || '').trim();
-        status = out === exp ? 'Accepted' : 'Wrong Answer';
-        if (status === 'Wrong Answer') {
-          overallVerdict = 'Wrong Answer';
-          finalStderr = `Expected \`${exp}\` but got \`${out}\``;
-        }
-        break;
-      default:
-        status = 'Internal System Error';
-        overallVerdict = 'Internal System Error';
-        finalStderr = execRes.scriptOutput;
+    if (execRes.scriptStatus === 'COMPILATION_ERROR') {
+      status = 'Compilation Error';
+      overallVerdict = 'Compilation Error';
+      finalCompile = execRes.scriptOutput;
+      finalErr = execRes.scriptOutput;
+    } else if (execRes.scriptStatus === 'DOCKER_RUNTIME_ERROR') {
+      status = 'Internal System Error';
+      overallVerdict = 'Internal System Error';
+      finalErr = execRes.scriptOutput;
+    } else if (execRes.scriptStatus === 'EXECUTED_SUCCESSFULLY') {
+      const out = execRes.scriptOutput.trim();
+      const exp = (tc.expectedOutput || '').trim();
+      status = out === exp ? 'Accepted' : 'Wrong Answer';
+      if (status === 'Wrong Answer') {
+        overallVerdict = 'Wrong Answer';
+        finalErr = `Expected \`${exp}\` but got \`${out}\``;
+      }
+    } else {
+      status = 'Internal System Error';
+      overallVerdict = 'Internal System Error';
+      finalErr = execRes.scriptOutput;
     }
 
     results.push({
@@ -252,31 +218,35 @@ async function processSubmissionJob(job) {
       time: execRes.scriptTime,
       memory: execRes.scriptMemory,
       isSample: tc.isSample,
+      isCustom: tc.isCustom,
     });
 
     if (overallVerdict !== 'Accepted') break;
   }
 
-  const update = {
+  const updateData = {
     verdict: overallVerdict,
     testCaseResults: results,
     executionTime: maxTime,
     memoryUsed: maxMemory,
-    ...(finalCompileOutput && { compileOutput: finalCompileOutput }),
-    ...(finalStderr && { stderr: finalStderr }),
   };
-  await Submission.findByIdAndUpdate(submissionId, update);
+  if (finalCompile) updateData.compileOutput = finalCompile;
+  if (finalErr) updateData.stderr = finalErr;
+
+  await Submission.findByIdAndUpdate(submissionId, updateData);
+
   console.log(`✅ Updated submission ${submissionId} -> ${overallVerdict}`);
 }
 
-// ── Worker Bootstrapping ─────────────────────────────
+// ── Bootstrapping ────────────────────────────────────
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   (async () => {
     await connectDB();
-    const worker = new Worker('submission-processing', processSubmissionJob, {
-      connection: new IORedis(REDIS_CONN_OPTS),
-      concurrency: parseInt(process.env.WORKER_CONCURRENCY || '1', 10),
-    });
+    const worker = new Worker(
+      'submission-processing',
+      processSubmissionJob,
+      { connection: new IORedis(REDIS_CONN_OPTS), concurrency: parseInt(process.env.WORKER_CONCURRENCY, 10) }
+    );
     worker.on('completed', job =>
       console.log(`✅ Job ${job.id} completed for submission ${job.data.submissionId}`)
     );
