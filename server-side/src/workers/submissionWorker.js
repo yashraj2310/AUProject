@@ -26,6 +26,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
+console.log('🚀 Submission worker using Dockerode initialized');
 console.log(
   'WORKER ENV: Loaded MONGO_URI:',
   process.env.MONGO_URI ? 'OK (value not shown)' : 'MISSING!'
@@ -118,7 +119,7 @@ async function executeSingleTestCaseInDocker(
         Memory: memBytes,
         MemorySwap: memBytes,
         PidsLimit: 128,
-        Binds: [`${tempDir}:/sandbox:ro`],
+        Binds: [`${tempDir}:/sandbox`],
         User: process.env.DOCKER_CONTAINER_UID || '1001',
       },
       WorkingDir: '/sandbox',
@@ -134,13 +135,20 @@ async function executeSingleTestCaseInDocker(
     // 5) Wait for finish
     await container.wait();
 
-    // 6) Parse output lines
-    const lines = rawOutput.trim().split('\n');
+    // 6) Parse output lines safely
+    const lines = rawOutput.split('\n');
+    const statusLine = (lines[0] || '').trim();
+    let scriptTime = parseFloat((lines[1] || '').trim());
+    if (Number.isNaN(scriptTime)) scriptTime = 0;
+    let scriptMemory = parseInt((lines[2] || '').trim(), 10);
+    if (Number.isNaN(scriptMemory)) scriptMemory = 0;
+    const scriptOutput = lines.slice(3).join('\n');
+
     return {
-      scriptStatus:   lines[0]?.trim()   || 'UNKNOWN_SCRIPT_OUTPUT',
-      scriptTime:     parseFloat(lines[1]?.trim()   || '0'),
-      scriptMemory:   parseInt(lines[2]?.trim()   || '0', 10),
-      scriptOutput:   lines.slice(3).join('\n'),
+      scriptStatus: statusLine || 'UNKNOWN_SCRIPT_OUTPUT',
+      scriptTime,
+      scriptMemory,
+      scriptOutput,
       dockerRawStderr: '',
     };
 
@@ -166,11 +174,11 @@ async function processSubmissionJob(job) {
   const { submissionId } = job.data;
   console.log(`Worker: Starting job ${job.id} for submission ${submissionId}`);
 
-  // Fetch submission & problem (unchanged)...
+  // Fetch submission & problem
   const submission = await Submission.findById(submissionId);
   const problem    = await Problem.findById(submission.problemId).select('+testCases');
 
-  // Initialize DB update for compile/run
+  // Initialize DB update
   await Submission.findByIdAndUpdate(submissionId, {
     verdict: 'Compiling',
     testCaseResults: [],
@@ -185,12 +193,12 @@ async function processSubmissionJob(job) {
   let finalCompileOutput = null, finalStderr = null;
   const results = [];
 
-  // Choose test cases (sample vs full)...
-  const testCases = submission.submissionType === 'run'
-    ? problem.testCases.filter(tc => tc.isSample)
-    : problem.testCases;
+  const testCases =
+    submission.submissionType === 'run'
+      ? problem.testCases.filter(tc => tc.isSample)
+      : problem.testCases;
 
-  for (let i = 0; i < testCases.length; ++i) {
+  for (let i = 0; i < testCases.length; i++) {
     const tc = testCases[i];
     await Submission.findByIdAndUpdate(submissionId, {
       verdict: `Running Test Case ${i+1}/${testCases.length}`
@@ -208,7 +216,6 @@ async function processSubmissionJob(job) {
     maxTime   = Math.max(maxTime, execRes.scriptTime);
     maxMemory = Math.max(maxMemory, execRes.scriptMemory);
 
-    // Determine status & handle errors (same logic as before)
     let status;
     switch (execRes.scriptStatus) {
       case 'COMPILATION_ERROR':
@@ -223,14 +230,12 @@ async function processSubmissionJob(job) {
         finalStderr = execRes.scriptOutput;
         break;
       case 'EXECUTED_SUCCESSFULLY':
-        {
-          const out = execRes.scriptOutput.trim();
-          const exp = (tc.expectedOutput||'').trim();
-          status = out === exp ? 'Accepted' : 'Wrong Answer';
-          if (status === 'Wrong Answer') {
-            overallVerdict = 'Wrong Answer';
-            finalStderr = `Expected \`${exp}\` but got \`${out}\``;
-          }
+        const out = execRes.scriptOutput.trim();
+        const exp = (tc.expectedOutput || '').trim();
+        status = out === exp ? 'Accepted' : 'Wrong Answer';
+        if (status === 'Wrong Answer') {
+          overallVerdict = 'Wrong Answer';
+          finalStderr = `Expected \`${exp}\` but got \`${out}\``;
         }
         break;
       default:
@@ -252,7 +257,6 @@ async function processSubmissionJob(job) {
     if (overallVerdict !== 'Accepted') break;
   }
 
-  // Finalize verdict & update DB
   const update = {
     verdict: overallVerdict,
     testCaseResults: results,
