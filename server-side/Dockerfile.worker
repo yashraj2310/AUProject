@@ -1,13 +1,13 @@
-FROM node:18-alpine as builder
+
+FROM node:18-alpine
 
 WORKDIR /app
+
 COPY package*.json ./
 RUN npm ci --only=production
+
 COPY . .
 
-FROM docker:24-cli-alpine
 
-WORKDIR /app
-COPY --from=builder /app /app
 
 CMD ["node", "src/workers/submissionWorker.js"]
