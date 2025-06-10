@@ -1,5 +1,3 @@
-// server-side/src/workers/submissionWorker.js
-
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -8,7 +6,6 @@ import os from 'os';
 import Docker from 'dockerode';
 import IORedis from 'ioredis';
 import { Worker } from 'bullmq';
-import mongoose from 'mongoose';
 
 // Models & Utils
 import connectDB from '../database/db.js';
@@ -27,20 +24,11 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 console.log('🚀 Submission worker using Dockerode initialized');
-console.log(
-  'WORKER ENV: Loaded MONGO_URI:',
-  process.env.MONGO_URI ? 'OK (value not shown)' : 'MISSING!'
-);
+console.log('WORKER ENV: Loaded MONGO_URI:', process.env.MONGO_URI ? 'OK (value not shown)' : 'MISSING!');
 console.log('WORKER ENV: Loaded REDIS_HOST:', process.env.REDIS_HOST || '127.0.0.1');
 console.log('WORKER ENV: Loaded REDIS_PORT:', process.env.REDIS_PORT || '6379');
-console.log(
-  'WORKER ENV: Loaded DOCKER_CONTAINER_UID:',
-  process.env.DOCKER_CONTAINER_UID || '1001'
-);
-console.log(
-  'WORKER ENV: Loaded WORKER_CONCURRENCY:',
-  process.env.WORKER_CONCURRENCY || '1'
-);
+console.log('WORKER ENV: Loaded DOCKER_CONTAINER_UID:', process.env.DOCKER_CONTAINER_UID || '1001');
+console.log('WORKER ENV: Loaded WORKER_CONCURRENCY:', process.env.WORKER_CONCURRENCY || '1');
 
 // ── Dockerode Client ────────────────────────────────
 const docker = new Docker({ socketPath: '/var/run/docker.sock' });
@@ -58,10 +46,8 @@ const DOCKER_IMAGE_MAP = {
   cpp: '898465023886.dkr.ecr.ap-south-1.amazonaws.com/execution-engine-cpp',
   c: '898465023886.dkr.ecr.ap-south-1.amazonaws.com/execution-engine-c',
   java: '898465023886.dkr.ecr.ap-south-1.amazonaws.com/execution-engine-java',
-  javascript:
-    '898465023886.dkr.ecr.ap-south-1.amazonaws.com/execution-engine-nodejs',
-  python:
-    '898465023886.dkr.ecr.ap-south-1.amazonaws.com/execution-engine-python',
+  javascript: '898465023886.dkr.ecr.ap-south-1.amazonaws.com/execution-engine-nodejs',
+  python: '898465023886.dkr.ecr.ap-south-1.amazonaws.com/execution-engine-python',
 };
 
 // ── Helpers ──────────────────────────────────────────
@@ -110,11 +96,11 @@ async function executeSingleTestCaseInDocker(
     }
     const memBytes = memoryLimitKB * 1024;
 
-    // 3) Create container
+    // 3) Create container without AutoRemove, to avoid race conditions
     const container = await docker.createContainer({
       Image: image,
       HostConfig: {
-        AutoRemove: true,
+        // Removing AutoRemove to explicitly handle cleanup
         NetworkMode: 'none',
         Memory: memBytes,
         MemorySwap: memBytes,
@@ -126,16 +112,21 @@ async function executeSingleTestCaseInDocker(
       Cmd: [String(timeLimitSec), String(memoryLimitKB)],
     });
 
-    // 4) Start & attach
-    await container.start();
+    // 4) Attach stream before starting, to avoid missing the container
     const stream = await container.attach({ stream: true, stdout: true, stderr: true });
     let rawOutput = '';
-    stream.on('data', (chunk) => { rawOutput += chunk.toString(); });
+    stream.on('data', (chunk) => {
+      rawOutput += chunk.toString();
+    });
 
-    // 5) Wait for finish
+    // 5) Start & wait for completion
+    await container.start();
     await container.wait();
 
-    // 6) Parse output lines safely
+    // 6) Cleanup container explicitly
+    await container.remove();
+
+    // 7) Parse output lines safely
     const lines = rawOutput.split('\n');
     const statusLine = (lines[0] || '').trim();
     let scriptTime = parseFloat((lines[1] || '').trim());
@@ -153,10 +144,7 @@ async function executeSingleTestCaseInDocker(
     };
 
   } catch (err) {
-    console.error(
-      `WORKER_ERROR (${submissionIdForLog}): Dockerode error:`,
-      err
-    );
+    console.error(`WORKER_ERROR (${submissionIdForLog}): Dockerode error:`, err);
     return {
       scriptStatus: 'DOCKER_RUNTIME_ERROR',
       scriptTime: 0,
@@ -164,8 +152,6 @@ async function executeSingleTestCaseInDocker(
       scriptOutput: err.message,
       dockerRawStderr: '',
     };
-  } finally {
-    // Optional: cleanup tempDir
   }
 }
 
