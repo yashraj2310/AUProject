@@ -1,6 +1,7 @@
 FROM openjdk:17-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    bash \
     coreutils \
     time \
     && rm -rf /var/lib/apt/lists/*

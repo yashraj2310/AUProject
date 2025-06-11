@@ -3,6 +3,7 @@ FROM gcc:11
 
 # Install only the necessary extra tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    bash \
     coreutils \
     time \
     && rm -rf /var/lib/apt/lists/*
