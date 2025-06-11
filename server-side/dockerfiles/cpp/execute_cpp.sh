@@ -15,8 +15,8 @@ RUN_DIR=$(mktemp -d)
 trap 'rm -rf "$RUN_DIR"' EXIT
 
 cd "$RUN_DIR"
-echo "--- mounted /sandbox contents ---" >&2
-ls -la "${SANDBOX_DIR}" >&2
+echo "--- mounted /sandbox contents ---" >
+ls -la "${SANDBOX_DIR}" >
 # Copy source file
 cp "${SANDBOX_DIR}/${SOURCE_FILE_BASENAME}" .
 
