@@ -37,7 +37,7 @@ async function executeInDocker(language, code, stdin, timeLimit, memKB, submissi
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), `sub-${submissionId}-`));
   // DEBUG: Log the path of the temporary directory we are creating.
   console.log(`[DEBUG] Created temporary directory: ${tmp}`);
-
+    let container = null;
   try {
     console.log("[DEBUG] Attempting to set permissions to 0o777...");
     await fs.chmod(tmp, 0o777);
@@ -59,7 +59,7 @@ async function executeInDocker(language, code, stdin, timeLimit, memKB, submissi
     const container = await docker.createContainer({
       Image: cfg.image,
       HostConfig: {
-        AutoRemove: true,
+        // AutoRemove: true,
         NetworkMode: "none",
         Memory: memKB * 1024,
         MemorySwap: memKB * 1024,
@@ -70,16 +70,16 @@ async function executeInDocker(language, code, stdin, timeLimit, memKB, submissi
       Cmd: ["sh", "-c", wrappedCommand],
     });
     
-    const stream = await container.attach({ stream: true, stdout: true, stderr: true });
+    // const stream = await container.attach({ stream: true, stdout: true, stderr: true });
     
-    console.log("[DEBUG] --- Container's Raw Output START ---");
-    // This promise will resolve once the stream has ended.
-    await new Promise(resolve => {
-        docker.modem.demuxStream(stream, process.stdout, process.stderr);
-        stream.on('end', resolve);
-        stream.on('error', resolve); 
-    });
-    console.log("[DEBUG] --- Container's Raw Output END ---");
+    // console.log("[DEBUG] --- Container's Raw Output START ---");
+    // // This promise will resolve once the stream has ended.
+    // await new Promise(resolve => {
+    //     docker.modem.demuxStream(stream, process.stdout, process.stderr);
+    //     stream.on('end', resolve);
+    //     stream.on('error', resolve); 
+    // });
+    // console.log("[DEBUG] --- Container's Raw Output END ---");
 
     await container.start();
     await container.wait();
