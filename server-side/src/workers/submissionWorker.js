@@ -8,36 +8,18 @@ import os from "os";
 import Docker from "dockerode";
 import IORedis from "ioredis";
 import { Worker } from "bullmq";
-import mongoose from "mongoose";
 
-// Models
 import connectDB from "../database/db.js";
 import { Submission } from "../models/submission.model.js";
 import { Problem } from "../models/problem.model.js";
 
+// JSON import of your language → image/commands map
+import langConfig from "../../lang-config.json" assert { type: "json" };
+
 // ── Load ENV ─────────────────────────────────────────
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname  = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
-
-console.log("🚀 Submission worker using Dockerode initialized");
-console.log(
-  "WORKER ENV: Loaded MONGO_URI:",
-  process.env.MONGO_URI ? "OK (value not shown)" : "MISSING!"
-);
-console.log(
-  "WORKER ENV: Loaded REDIS_HOST:",
-  process.env.REDIS_HOST || "127.0.0.1"
-);
-console.log("WORKER ENV: Loaded REDIS_PORT:", process.env.REDIS_PORT || "6379");
-console.log(
-  "WORKER ENV: Loaded DOCKER_CONTAINER_UID:",
-  process.env.DOCKER_CONTAINER_UID || "1001"
-);
-console.log(
-  "WORKER ENV: Loaded WORKER_CONCURRENCY:",
-  process.env.WORKER_CONCURRENCY || "1"
-);
 
 // ── Dockerode & Redis Setup ────────────────────────────
 const docker = new Docker({ socketPath: "/var/run/docker.sock" });
@@ -48,342 +30,183 @@ const REDIS_CONN_OPTS = {
   enableReadyCheck: false,
 };
 
-// ── Docker Image Map ─────────────────────────────────
-const DOCKER_IMAGE_MAP = {
-  cpp: "898465023886.dkr.ecr.ap-south-1.amazonaws.com/execution-engine-cpp",
-  c: "898465023886.dkr.ecr.ap-south-1.amazonaws.com/execution-engine-c",
-  java: "898465023886.dkr.ecr.ap-south-1.amazonaws.com/execution-engine-java",
-  javascript:
-    "898465023886.dkr.ecr.ap-south-1.amazonaws.com/execution-engine-nodejs",
-  python:
-    "898465023886.dkr.ecr.ap-south-1.amazonaws.com/execution-engine-python",
-};
-
-// ── Helpers ──────────────────────────────────────────
-const getCodeFileName = (lang) => {
-  switch (lang.toLowerCase()) {
-    case "cpp":
-      return "Main.cpp";
-    case "c":
-      return "Main.c";
-    case "java":
-      return "Main.java";
-    case "python":
-      return "script.py";
-    case "javascript":
-      return "script.js";
-    default:
-      throw new Error(`Unsupported language: ${lang}`);
-  }
-};
-
-// ── Core: execute test case in Docker via Dockerode ──
+// ── Core: generic runner via Docker ───────────────────
 async function executeSingleTestCaseInDocker(
-  language,
-  code,
-  stdin,
-  timeLimitSec,
-  memoryLimitKB,
-  submissionIdForLog
+  language, code, stdin, timeLimitSec, memoryLimitKB, submissionId
 ) {
-  let tempDir;
-  try {
-    // 1) Create temp directory for this execution
-    tempDir = await fs.mkdtemp(
-      path.join(
-        os.tmpdir(),
-        `sub-${submissionIdForLog.toString().slice(-6)}-exec-`
-      )
-    );
-    await fs.chmod(tempDir, 0o755);
-    const codeFileName = getCodeFileName(language);
-    const codeFile = path.join(tempDir, codeFileName);
-    const inputFile = path.join(tempDir, "input.txt");
-
-    await fs.writeFile(codeFile, code);
-    await fs.writeFile(inputFile, stdin || "");
-
-    // 2) Select Docker image and define resource limits
-    const image = DOCKER_IMAGE_MAP[language.toLowerCase()];
-    if (!image) {
-      return {
-        scriptStatus: "INTERNAL_SYSTEM_ERROR",
-        scriptTime: 0,
-        scriptMemory: 0,
-        scriptOutput: `Unsupported language: ${language}`,
-      };
-    }
-    const memBytes = memoryLimitKB * 1024;
-
-    // 3) Create container
-    const container = await docker.createContainer({
-      Image: image,
-      // User: process.env.DOCKER_CONTAINER_UID || "1001",
-      HostConfig: {
-        AutoRemove: true, // Let Docker clean up the container itself after it stops
-        NetworkMode: "none",
-        Memory: memBytes,
-        MemorySwap: memBytes,
-        PidsLimit: 128,
-        Binds: [`${tempDir}:/sandbox`],
-       
-      },
-      WorkingDir: "/sandbox",
-      // FIX #1: Pass the filename as the 3rd argument to the entrypoint script
-      Cmd: [String(timeLimitSec), String(memoryLimitKB), codeFileName],
-    });
-
-    // 5) Attach + demux
-    const attachStream = await container.attach({
-      stream: true,
-      stdout: true,
-      stderr: true,
-    });
-
-    const stdoutChunks = [];
-    const stderrChunks = [];
-
-    docker.modem.demuxStream(
-      attachStream,
-      { write: (chunk) => stdoutChunks.push(chunk) },
-      { write: (chunk) => stderrChunks.push(chunk) }
-    );
-
-    // 6) Run
-    await container.start();
-    await container.wait();
-
-    // 7) Combine & split on separator
-    const fullStdout = Buffer.concat(stdoutChunks).toString("utf8");
-
-    // FIX #2: Use a robust separator for parsing, NOT split('\n')
-    const separator = "---|||---";
-    const parts = fullStdout.split(separator);
-
-    if (parts.length < 2) {
-      console.error(
-        `WORKER_ERROR (${submissionIdForLog}): Invalid output format from container. Raw output: ${fullStdout}`
-      );
-      return {
-        scriptStatus: "INTERNAL_SYSTEM_ERROR",
-        scriptTime: 0,
-        scriptMemory: 0,
-        scriptOutput: `Container failed. Log: ${fullStdout.slice(0, 500)}`,
-      };
-    }
-
-    const metadata = parts[0].trim().split("\n");
-    const scriptOutput = parts[1]; // This is the user's stdout or stderr
-
-    const statusLine = (metadata[0] || "UNKNOWN_SCRIPT_OUTPUT").trim();
-    const scriptTime = parseFloat(metadata[1] || "0");
-    const scriptMemory = parseInt(metadata[2] || "0", 10);
-
-    return {
-      scriptStatus: statusLine,
-      scriptTime: isNaN(scriptTime) ? 0 : scriptTime,
-      scriptMemory: isNaN(scriptMemory) ? 0 : scriptMemory,
-      scriptOutput,
-    };
-  } catch (err) {
-    console.error(
-      `WORKER_ERROR (${submissionIdForLog}): Dockerode error:`,
-      err
-    );
-    return {
-      scriptStatus: "DOCKER_RUNTIME_ERROR",
-      scriptTime: 0,
-      scriptMemory: 0,
-      scriptOutput: err.message,
-    };
-  } finally {
-    // FIX #4: Always clean up the temporary directory on the host machine
-    if (tempDir) {
-      await fs.rm(tempDir, { recursive: true, force: true }).catch((err) => {
-        console.error(
-          `WORKER_ERROR (${submissionIdForLog}): Failed to cleanup temp dir ${tempDir}:`,
-          err
-        );
-      });
-    }
-  }
-}
-
-// ── Process Submission Job ───────────────────────────
-async function processSubmissionJob(job) {
-  const { submissionId } = job.data;
-  console.log(`Worker: Starting job ${job.id} for submission ${submissionId}`);
-
-  const submission = await Submission.findById(submissionId);
-  if (!submission) {
-    console.error(`Submission ${submissionId} not found.`);
-    return;
-  }
-  const problem = await Problem.findById(submission.problemId).select(
-    "+testCases"
-  );
-  if (!problem) {
-    await Submission.findByIdAndUpdate(submissionId, {
-      verdict: "Internal System Error",
-      stderr: "Problem data not found.",
-    });
-    return;
+  // 1) Lookup config
+  const cfg = langConfig[language];
+  if (!cfg) {
+    return { status: "Internal SystemError", time: 0, memory: 0, output: `Unsupported language ${language}` };
   }
 
-  await Submission.findByIdAndUpdate(submissionId, {
-    verdict: "Running...",
-    testCaseResults: [],
+  // 2) Prepare temp dir
+  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), `sub-${submissionId}-`));
+  await fs.chmod(tmp, 0o755);
+
+  // 3) Write code & input
+  const codeFile = cfg.compile
+    ? cfg.compile.split(" ")[2]
+    : cfg.run.split(" ")[1];
+  await fs.writeFile(path.join(tmp, codeFile), code);
+  await fs.writeFile(path.join(tmp, "input.txt"), stdin || "");
+
+  // 4) Build command: optional compile + run
+  const compileCmd = cfg.compile ? `${cfg.compile} 2> compile_err.txt && ` : "";
+  const runCmd     = cfg.run;
+  // wrap with time+timeout, produce stats.txt
+  const wrapped = `/usr/bin/time -f "%e %M" -o stats.txt timeout -s KILL ${timeLimitSec}s sh -c '${compileCmd}${runCmd}'`;
+
+  // 5) Launch container
+  const container = await docker.createContainer({
+    Image: cfg.image,
+    HostConfig: {
+      AutoRemove: true,
+      NetworkMode: "none",
+      Memory: memoryLimitKB * 1024,
+      MemorySwap: memoryLimitKB * 1024,
+      PidsLimit: 64,
+      Binds: [`${tmp}:/sandbox`],
+    },
+    WorkingDir: "/sandbox",
+    Cmd: ["sh", "-c", wrapped],
   });
 
-  let overallVerdict = "Accepted";
-  let maxTime = 0,
-    maxMemory = 0;
-  let finalCompileOutput = null,
-    finalStderr = null;
+  // 6) Attach & collect
+  const stream = await container.attach({ stream: true, stdout: true, stderr: true });
+  const outChunks = [], errChunks = [];
+  docker.modem.demuxStream(stream,
+    { write: c => outChunks.push(c) },
+    { write: c => errChunks.push(c) }
+  );
+  await container.start();
+  await container.wait();
+
+  // 7) Parse stats
+  const stdout = Buffer.concat(outChunks).toString("utf8").trim();
+  const [timeStr, memStr] = stdout.split(/\s+/);
+  const timeUsed = parseFloat(timeStr) || 0;
+  const memUsed  = parseInt(memStr, 10)   || 0;
+
+  // 8) Read user output / errors
+  const userOut = await fs.readFile(path.join(tmp, "user_out.txt"), "utf8").catch(() => "");
+  const userErr = await fs.readFile(path.join(tmp, "user_err.txt"), "utf8").catch(() => "");
+  const compileErr = await fs.readFile(path.join(tmp, "compile_err.txt"), "utf8").catch(() => "");
+
+  // 9) Cleanup
+  await fs.rm(tmp, { recursive: true, force: true });
+
+  // 10) Determine status
+  let status;
+  if (compileErr)              status = "Compilation Error";
+  else if (timeUsed >= timeLimitSec) status = "Time Limit Exceeded";
+  else if (memUsed > memoryLimitKB)  status = "Memory Limit Exceeded";
+  else if (userErr)            status = "Runtime Error";
+  else                          status = "Accepted";
+
+  const output = compileErr || userErr || userOut;
+  return { status, time: timeUsed, memory: memUsed, output };
+}
+
+// ── Worker: process each submission ───────────────────
+async function processSubmissionJob(job) {
+  const submissionId = job.data.submissionId;
+  console.log(`Starting submission ${submissionId}`);
+
+  const submission = await Submission.findById(submissionId);
+  if (!submission) return;
+
+  const problem = await Problem.findById(submission.problemId).select("+testCases cpuTimeLimit memoryLimit");
+  if (!problem) {
+    await Submission.findByIdAndUpdate(submissionId, { verdict: "Internal SystemError" });
+    return;
+  }
+
+  // initialize
+  await Submission.findByIdAndUpdate(submissionId, { verdict: "Running", testCaseResults: [] });
+
+  let overall = "Accepted", maxTime = 0, maxMem = 0;
+  let compileOutput = null, stderr = null;
   const results = [];
-  let stopExecution = false;
 
-  const testCases =
-    submission.submissionType === "run"
-      ? problem.testCases.filter((tc) => tc.isSample)
-      : problem.testCases;
+  // choose testcases
+  const tcs = submission.submissionType === "run"
+    ? problem.testCases.filter(tc => tc.isSample)
+    : problem.testCases;
 
-  for (let i = 0; i < testCases.length; i++) {
-    const tc = testCases[i];
-    await Submission.findByIdAndUpdate(submissionId, {
-      verdict: `Running on Test Case ${i + 1}`,
-    });
-
-    const execRes = await executeSingleTestCaseInDocker(
+  for (let i = 0; i < tcs.length; i++) {
+    const tc = tcs[i];
+    const exec = await executeSingleTestCaseInDocker(
       submission.language,
       submission.code,
-      tc.input,
-      problem.cpuTimeLimit || 2,
-      problem.memoryLimit || 256000, // 256MB in KB
+      submission.customInput || tc.input,
+      problem.cpuTimeLimit,
+      problem.memoryLimit,
       submissionId
     );
 
-    maxTime = Math.max(maxTime, execRes.scriptTime);
-    maxMemory = Math.max(maxMemory, execRes.scriptMemory);
+    maxTime = Math.max(maxTime, exec.time);
+    maxMem  = Math.max(maxMem, exec.memory);
 
-    let status;
-    // FIX #3: Expand the switch statement to handle all verdicts from the script
-    switch (execRes.scriptStatus) {
-      case "EXECUTED_SUCCESSFULLY":
-        const actualOutput = execRes.scriptOutput.trim().replace(/\r\n/g, "\n");
-        const expectedOutput = (tc.expectedOutput || "")
-          .trim()
-          .replace(/\r\n/g, "\n");
-        if (actualOutput === expectedOutput) {
-          status = "Accepted";
-        } else {
-          status = "Wrong Answer";
-          overallVerdict = "Wrong Answer";
-          finalStderr = `Test Case #${
-            i + 1
-          }:\nExpected: \`${expectedOutput.slice(
-            0,
-            200
-          )}\`\nGot: \`${actualOutput.slice(0, 200)}\``;
-          stopExecution = true;
-        }
-        break;
-
-      case "COMPILATION_ERROR":
-        status = "Compilation Error";
-        overallVerdict = "Compilation Error";
-        finalCompileOutput = execRes.scriptOutput;
-        finalStderr = execRes.scriptOutput;
-        stopExecution = true;
-        break;
-
-      case "RUNTIME_ERROR":
-        status = "Runtime Error";
-        overallVerdict = "Runtime Error";
-        finalStderr = execRes.scriptOutput;
-        stopExecution = true;
-        break;
-
-      case "TIME_LIMIT_EXCEEDED":
-        status = "Time Limit Exceeded";
-        overallVerdict = "Time Limit Exceeded";
-        finalStderr = `Exceeded time limit of ${
-          problem.cpuTimeLimit
-        }s on Test Case #${i + 1}.`;
-        stopExecution = true;
-        break;
-
-      case "MEMORY_LIMIT_EXCEEDED":
-        status = "Memory Limit Exceeded";
-        overallVerdict = "Memory Limit Exceeded";
-        finalStderr = `Exceeded memory limit of ${
-          problem.memoryLimit
-        }KB on Test Case #${i + 1}.`;
-        stopExecution = true;
-        break;
-
-      default: // Catches DOCKER_RUNTIME_ERROR, INTERNAL_SYSTEM_ERROR, etc.
-        status = "Internal System Error";
-        overallVerdict = "Internal System Error";
-        finalStderr = execRes.scriptOutput;
-        stopExecution = true;
-        break;
+    // map statuses
+    let status = exec.status;
+    if (status === "Accepted") {
+      const got = exec.output.trim(), exp = tc.expectedOutput.trim();
+      if (got !== exp) {
+        status = "Wrong Answer";
+        overall = "Wrong Answer";
+        stderr = `Test #${i+1} expected ${exp} got ${got}`;
+      }
+    } else {
+      overall = status; // any other error is final
+      if (status === "Compilation Error") compileOutput = exec.output;
+      else stderr = exec.output;
     }
 
     results.push({
+      testCaseId: tc._id,
       input: tc.input,
       expectedOutput: tc.expectedOutput,
-      actualOutput: execRes.scriptOutput,
+      actualOutput: exec.output,
       status,
-      time: execRes.scriptTime,
-      memory: execRes.scriptMemory,
+      time: exec.time,
+      memory: exec.memory,
+      inputSize: tc.input.length,
       isSample: tc.isSample,
+      isCustom: false
     });
 
-    if (stopExecution) break;
+    if (status !== "Accepted") break;
   }
 
-  // Remove unused imports to clean up the code
-  const {
-    ContestScore,
-    Contest,
-    estimateTimeComplexity,
-    estimateSpaceComplexity,
-    ..._
-  } = {};
-
-  const update = {
-    verdict: overallVerdict,
+  // Final update
+  await Submission.findByIdAndUpdate(submissionId, {
+    verdict: overall,
     testCaseResults: results,
+    compileOutput,
+    stderr,
     executionTime: maxTime,
-    memoryUsed: maxMemory,
-    ...(finalCompileOutput && { compileOutput: finalCompileOutput }),
-    ...(finalStderr && { stderr: finalStderr }),
-  };
-  await Submission.findByIdAndUpdate(submissionId, update);
-  console.log(
-    `✅ Updated submission ${submissionId} with verdict: ${overallVerdict}`
-  );
+    memoryUsed: maxMem
+  });
+
+  console.log(`Submission ${submissionId} done: ${overall}`);
 }
 
-// ── Worker Bootstrapping ─────────────────────────────
+// ── Boot the worker ────────────────────────────────
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   (async () => {
     await connectDB();
+
     const worker = new Worker("submission-processing", processSubmissionJob, {
       connection: new IORedis(REDIS_CONN_OPTS),
-      concurrency: parseInt(process.env.WORKER_CONCURRENCY || "1", 10),
+      concurrency: Number(process.env.WORKER_CONCURRENCY) || 1
     });
-    worker.on("completed", (job) =>
-      console.log(
-        `✅ Job ${job.id} completed for submission ${job.data.submissionId}`
-      )
+
+    worker.on("completed", job =>
+      console.log(`Job ${job.id} completed.`)
     );
     worker.on("failed", (job, err) =>
-      console.error(
-        `❌ Job ${job.id} for submission ${job.data.submissionId} failed:`,
-        err
-      )
+      console.error(`Job ${job.id} failed:`, err)
     );
   })();
 }

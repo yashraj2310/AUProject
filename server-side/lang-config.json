@@ -1,0 +1,20 @@
+{
+  "cpp": {
+    "image": "898465023886.dkr.ecr.ap-south-1.amazonaws.com/execution-engine-cpp:latest",
+    "compile": "g++ -O2 -std=c++17 Main.cpp -o a.out",
+    "run": "./a.out < input.txt"
+  },
+  "java": {
+    "image": "898465023886.dkr.ecr.ap-south-1.amazonaws.com/execution-engine-java:latest",
+    "compile": "javac Main.java",
+    "run": "java Main < input.txt"
+  },
+  "javascript": {
+    "image": "898465023886.dkr.ecr.ap-south-1.amazonaws.com/execution-engine-nodejs:latest",
+    "run": "node script.js < input.txt"
+  },
+  "python": {
+    "image": "898465023886.dkr.ecr.ap-south-1.amazonaws.com/execution-engine-python:latest",
+    "run": "python3 script.py < input.txt"
+  }
+}
