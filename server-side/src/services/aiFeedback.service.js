@@ -8,7 +8,7 @@ if (!process.env.GOOGLE_API_KEY) {
 }
 
 const genAI = process.env.GOOGLE_API_KEY ? new GoogleGenerativeAI(process.env.GOOGLE_API_KEY) : null;
-const model = genAI ? genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" }) : null; 
+const model = genAI ? genAI.getGenerativeModel({ model: "gemini-2.0-flash" }) : null; 
 
 export const getAIHelpFeedback = async (userCode, problemContext, recentSubmissions = []) => {
     if (!model) {
