@@ -11,17 +11,15 @@ import connectDB from "../database/db.js";
 import { Submission } from "../models/submission.model.js";
 import { Problem } from "../models/problem.model.js";
 
-// ── Load ENV ─────────────────────────────────────────
+// Load ENV and Config
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
-
-// ── Load lang-config.json at runtime ─────────────────
 const langConfigPath = path.resolve(__dirname, "../../lang-config.json");
 const langConfigJson = await fs.readFile(langConfigPath, "utf8");
 const langConfig = JSON.parse(langConfigJson);
 
-// ── Dockerode & Redis Setup ───────────────────────────
+// Docker & Redis Setup
 const docker = new Docker({ socketPath: "/var/run/docker.sock" });
 const REDIS_CONN_OPTS = {
   host: process.env.REDIS_HOST || "127.0.0.1",
@@ -30,36 +28,34 @@ const REDIS_CONN_OPTS = {
   enableReadyCheck: false,
 };
 
-// ── Core: generic runner via Docker ───────────────────
 async function executeInDocker(language, code, stdin, timeLimit, memKB, submissionId) {
   const cfg = langConfig[language];
   if (!cfg) {
     return { status: "Internal SystemError", time: 0, memory: 0, output: `Unsupported language ${language}` };
   }
 
-  // Use a temporary directory that is guaranteed to be cleaned up
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), `sub-${submissionId}-`));
+  // DEBUG: Log the path of the temporary directory we are creating.
+  console.log(`[DEBUG] Created temporary directory: ${tmp}`);
 
   try {
-
+    console.log("[DEBUG] Attempting to set permissions to 0o777...");
     await fs.chmod(tmp, 0o777);
+    console.log("[DEBUG] Permissions set successfully.");
 
     const codeFile = cfg.sourceFile;
-    if (!codeFile) {
-      throw new Error(`No sourceFile configured for language ${language}`);
-    }
+    if (!codeFile) { throw new Error(`No sourceFile configured for language ${language}`); }
     await fs.writeFile(path.join(tmp, codeFile), code);
     await fs.writeFile(path.join(tmp, "input.txt"), stdin || "");
 
-    // 3) Build shell command
     const compilePart = cfg.compile ? `${cfg.compile} 2> compile_err.txt && ` : "";
     const runPart = cfg.run;
     const shellCommand = `${compilePart}${runPart}`;
-
-
     const wrappedCommand = `/usr/bin/time -f "%e %M" -o stats.txt timeout -s KILL ${timeLimit}s sh -c "${shellCommand.replace(/"/g, '\\"')}"`;
+    
+    // DEBUG: Log the exact command we are sending to the container.
+    console.log(`[DEBUG] Executing command: ${wrappedCommand}`);
 
-    // 4) Create container
     const container = await docker.createContainer({
       Image: cfg.image,
       HostConfig: {
@@ -73,46 +69,56 @@ async function executeInDocker(language, code, stdin, timeLimit, memKB, submissi
       WorkingDir: "/sandbox",
       Cmd: ["sh", "-c", wrappedCommand],
     });
-
-    // 5) Run & wait
-    // DEBUGGING: Stream container output directly to worker logs for better diagnostics
-    const stream = await container.attach({ stream: true, stdout: true, stderr: true });
-    docker.modem.demuxStream(stream, process.stdout, process.stderr);
     
+    const stream = await container.attach({ stream: true, stdout: true, stderr: true });
+    
+    console.log("[DEBUG] --- Container's Raw Output START ---");
+    // This promise will resolve once the stream has ended.
+    await new Promise(resolve => {
+        docker.modem.demuxStream(stream, process.stdout, process.stderr);
+        stream.on('end', resolve);
+        stream.on('error', resolve); 
+    });
+    console.log("[DEBUG] --- Container's Raw Output END ---");
+
     await container.start();
     await container.wait();
+    console.log("[DEBUG] Container has finished execution.");
 
-    // 6) Read stats
+    // Reading results from the temp directory
     let timeUsed = 0, memUsed = 0;
     try {
       const stats = await fs.readFile(path.join(tmp, "stats.txt"), "utf8");
       const [t, m] = stats.trim().split(/\s+/);
       timeUsed = parseFloat(t) || 0;
       memUsed = parseInt(m, 10) || 0;
-    } catch { /* Ignore if stats file is not created (e.g., on compile error) */ }
-
-    // 7) Read outputs from files
+    } catch { /* Ignore */ }
     const compileErr = await fs.readFile(path.join(tmp, "compile_err.txt"), "utf8").catch(() => "");
     const userErr = await fs.readFile(path.join(tmp, "user_err.txt"), "utf8").catch(() => "");
     const userOut = await fs.readFile(path.join(tmp, "user_out.txt"), "utf8").catch(() => "");
 
-    // 9) Determine status
     let status;
     if (compileErr) status = "Compilation Error";
+    else if (userErr) status = "Runtime Error";
     else if (timeUsed >= timeLimit) status = "Time Limit Exceeded";
     else if (memUsed > memKB) status = "Memory Limit Exceeded";
-    else if (userErr) status = "Runtime Error";
     else status = "Accepted";
 
     const output = compileErr || userErr || userOut;
     return { status, time: timeUsed, memory: memUsed, output };
 
+  } catch (error) {
+    console.error("[DEBUG] An unexpected error occurred in executeInDocker:", error);
+    return { status: "Internal SystemError", time: 0, memory: 0, output: error.message };
   } finally {
-    await fs.rm(tmp, { recursive: true, force: true });
+  
+    // We are intentionally NOT deleting the directory so we can inspect it.
+    console.log(`[DEBUG] Preserving temp directory for inspection: ${tmp}`);
+    // await fs.rm(tmp, { recursive: true, force: true });
+ 
   }
 }
 
-// ── Process Submission Job (NO CHANGES NEEDED HERE) ───────────────────────────
 async function processSubmissionJob(job) {
   const submissionId = job.data.submissionId;
   console.log(`🛠️  Processing submission ${submissionId}`);
@@ -128,20 +134,13 @@ async function processSubmissionJob(job) {
     return;
   }
 
-  await Submission.findByIdAndUpdate(submissionId, {
-    verdict: "Running",
-    testCaseResults: [],
-  });
+  await Submission.findByIdAndUpdate(submissionId, { verdict: "Running", testCaseResults: [] });
 
-  let overall = "Accepted",
-    maxTime = 0,
-    maxMem = 0;
-  let compileOutput = null,
-    stderr = null;
+  let overall = "Accepted", maxTime = 0, maxMem = 0;
+  let compileOutput = null, stderr = null;
   const results = [];
 
-  const tcs =
-    submission.submissionType === "run"
+  const tcs = submission.submissionType === "run"
       ? problem.testCases.filter((tc) => tc.isSample)
       : problem.testCases || [];
 
@@ -161,12 +160,11 @@ async function processSubmissionJob(job) {
 
     let status = exec.status;
     if (status === "Accepted") {
-      const got = exec.output.trim(),
-        exp = tc.expectedOutput.trim();
+      const got = exec.output.trim(), exp = tc.expectedOutput.trim();
       if (got !== exp) {
         status = "Wrong Answer";
         overall = "Wrong Answer";
-        stderr = `Test #${i + 1} expected ${exp}, got ${got}`;
+        stderr = `Test #${i + 1} expected '${exp}', got '${got}'`;
       }
     } else {
       overall = status;
@@ -175,34 +173,22 @@ async function processSubmissionJob(job) {
     }
 
     results.push({
-      testCaseId: tc._id,
-      input: tc.input,
-      expectedOutput: tc.expectedOutput,
-      actualOutput: exec.output,
-      status,
-      time: exec.time,
-      memory: exec.memory,
-      inputSize: tc.input.length,
-      isSample: tc.isSample,
-      isCustom: false,
+      testCaseId: tc._id, input: tc.input, expectedOutput: tc.expectedOutput,
+      actualOutput: exec.output, status, time: exec.time, memory: exec.memory,
+      inputSize: tc.input.length, isSample: tc.isSample, isCustom: false,
     });
 
     if (status !== "Accepted") break;
   }
 
   await Submission.findByIdAndUpdate(submissionId, {
-    verdict: overall,
-    testCaseResults: results,
-    compileOutput,
-    stderr,
-    executionTime: maxTime,
-    memoryUsed: maxMem,
+    verdict: overall, testCaseResults: results, compileOutput, stderr,
+    executionTime: maxTime, memoryUsed: maxMem,
   });
 
   console.log(`✅  Done submission ${submissionId}: ${overall}`);
 }
 
-// ── Worker Bootstrapping (NO CHANGES NEEDED HERE) ─────────────────────────────
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   (async () => {
     await connectDB();
