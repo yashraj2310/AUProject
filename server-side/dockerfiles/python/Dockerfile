@@ -1,8 +1,7 @@
 # Use an official, slim Python base image
 FROM python:3.10-slim
 
-# Install necessary tools for time and memory measurement
-# 'bc' is no longer needed with the simplified script
+# Install necessary tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
     coreutils \
     time \
@@ -10,18 +9,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Create a non-root user 'executor' for security
 RUN useradd -ms /bin/bash -u 1001 executor
-
-# Set the working directory inside the container
 WORKDIR /sandbox
 
-# Copy the execution script from your host into the image
-COPY execute_python.sh /usr/local/bin/execute_python.sh
+# --- FIX: Give the executor user ownership of the working directory ---
+RUN chown -R executor:executor /sandbox
 
-# Make the script executable and give ownership to the non-root user
+# Copy the execution script
+COPY execute_python.sh /usr/local/bin/execute_python.sh
 RUN chmod +x /usr/local/bin/execute_python.sh && chown executor:executor /usr/local/bin/execute_python.sh
 
-# Switch to the non-root user for running the code
+# Switch to the non-root user
 USER executor
-
-# Set the container's entrypoint to be our script
 ENTRYPOINT ["/usr/local/bin/execute_python.sh"]

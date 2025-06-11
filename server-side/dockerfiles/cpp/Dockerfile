@@ -13,6 +13,9 @@ RUN useradd -ms /bin/bash -u 1001 executor
 # Set the working directory
 WORKDIR /sandbox
 
+# --- FIX: Give the executor user ownership of the working directory ---
+RUN chown -R executor:executor /sandbox
+
 # Copy the execution script and make it executable by the non-root user
 COPY execute_cpp.sh /usr/local/bin/execute_cpp.sh
 RUN chmod +x /usr/local/bin/execute_cpp.sh && chown executor:executor /usr/local/bin/execute_cpp.sh
