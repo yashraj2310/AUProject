@@ -2,7 +2,7 @@
 
 import dotenv from "dotenv";
 import path from "path";
-import { fileURLToFilePath, pathToFileURL } from "url";
+import { fileURLToPath, pathToFileURL } from "url";
 import fs from "fs/promises";
 import os from "os";
 import Docker from "dockerode";
@@ -13,26 +13,33 @@ import connectDB from "../database/db.js";
 import { Submission } from "../models/submission.model.js";
 import { Problem    } from "../models/problem.model.js";
 
-// Load your lang → image/commands map
-import langConfig from "../../lang-config.json" assert { type: "json" };
+// ── Load ENV ─────────────────────────────────────────
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
-dotenv.config({ path: path.resolve(path.dirname(fileURLToFilePath(import.meta.url)), "../../.env") });
+// ── Load lang-config.json at runtime ─────────────────
+const langConfigPath = path.resolve(__dirname, "../../lang-config.json");
+const langConfigJson = await fs.readFile(langConfigPath, "utf8");
+const langConfig     = JSON.parse(langConfigJson);
 
+// ── Dockerode & Redis Setup ───────────────────────────
 const docker = new Docker({ socketPath: "/var/run/docker.sock" });
 const REDIS_CONN_OPTS = {
   host: process.env.REDIS_HOST || "127.0.0.1",
   port: +process.env.REDIS_PORT || 6379,
   maxRetriesPerRequest: null,
-  enableReadyCheck: false
+  enableReadyCheck: false,
 };
 
+// ── Core: generic runner via Docker ───────────────────
 async function executeInDocker(language, code, stdin, timeLimit, memKB, submissionId) {
   const cfg = langConfig[language];
   if (!cfg) {
     return { status: "Internal SystemError", time: 0, memory: 0, output: `Unsupported language ${language}` };
   }
 
-  // 1) Prep temp dir
+  // 1) Prepare temp dir
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), `sub-${submissionId}-`));
   await fs.chmod(tmp, 0o755);
 
@@ -43,15 +50,10 @@ async function executeInDocker(language, code, stdin, timeLimit, memKB, submissi
   await fs.writeFile(path.join(tmp, codeFile), code);
   await fs.writeFile(path.join(tmp, "input.txt"), stdin || "");
 
-  // 3) Build shell snippet
-  const compileStep = cfg.compile
-    ? `${cfg.compile} 2> compile_err.txt && `
-    : "";
-  // ensure stdout/stderr go to files
-  const runStep     = `${cfg.run} > user_out.txt 2> user_err.txt`;
-
-  // wrap with timeout + /usr/bin/time
-  const wrapped     = `/usr/bin/time -f "%e %M" -o stats.txt timeout -s KILL ${timeLimit}s sh -c '${compileStep}${runStep}'`;
+  // 3) Build snippet
+  const compilePart = cfg.compile ? `${cfg.compile} 2> compile_err.txt && ` : "";
+  const runPart     = cfg.run;
+  const wrapped     = `/usr/bin/time -f "%e %M" -o stats.txt timeout -s KILL ${timeLimit}s sh -c '${compilePart}${runPart}'`;
 
   // 4) Create container
   const container = await docker.createContainer({
@@ -62,23 +64,29 @@ async function executeInDocker(language, code, stdin, timeLimit, memKB, submissi
       Memory: memKB * 1024,
       MemorySwap: memKB * 1024,
       PidsLimit: 64,
-      Binds: [`${tmp}:/sandbox`]
+      Binds: [`${tmp}:/sandbox`],
     },
     WorkingDir: "/sandbox",
-    Cmd: ["sh", "-c", wrapped]
+    Cmd: ["sh", "-c", wrapped],
   });
 
   // 5) Run & wait
+  const stream = await container.attach({ stream:true, stdout:true, stderr:true });
+  const out = [], err = [];
+  docker.modem.demuxStream(stream,
+    { write: b => out.push(b) },
+    { write: b => err.push(b) }
+  );
   await container.start();
   await container.wait();
 
-  // 6) Read stats file from tmp
+  // 6) Read stats
   let timeUsed = 0, memUsed = 0;
   try {
     const stats = await fs.readFile(path.join(tmp, "stats.txt"), "utf8");
-    const [t, m] = stats.trim().split(/\s+/);
+    const [t,m] = stats.trim().split(/\s+/);
     timeUsed = parseFloat(t) || 0;
-    memUsed  = parseInt(m, 10)   || 0;
+    memUsed  = parseInt(m,10)  || 0;
   } catch {}
 
   // 7) Read outputs
@@ -87,9 +95,9 @@ async function executeInDocker(language, code, stdin, timeLimit, memKB, submissi
   const userOut    = await fs.readFile(path.join(tmp, "user_out.txt"),    "utf8").catch(() => "");
 
   // 8) Cleanup
-  await fs.rm(tmp, { recursive: true, force: true });
+  await fs.rm(tmp, { recursive:true, force:true });
 
-  // 9) Decide status
+  // 9) Determine status
   let status;
   if (compileErr)                status = "Compilation Error";
   else if (timeUsed >= timeLimit) status = "Time Limit Exceeded";
@@ -101,6 +109,7 @@ async function executeInDocker(language, code, stdin, timeLimit, memKB, submissi
   return { status, time: timeUsed, memory: memUsed, output };
 }
 
+// ── Process Submission Job ───────────────────────────
 async function processSubmissionJob(job) {
   const submissionId = job.data.submissionId;
   console.log(`🛠️  Processing submission ${submissionId}`);
@@ -115,10 +124,8 @@ async function processSubmissionJob(job) {
     return;
   }
 
-  // initialize
   await Submission.findByIdAndUpdate(submissionId, {
-    verdict: "Running",
-    testCaseResults: []
+    verdict: "Running", testCaseResults: []
   });
 
   let overall = "Accepted", maxTime = 0, maxMem = 0;
@@ -149,7 +156,7 @@ async function processSubmissionJob(job) {
       if (got !== exp) {
         status = "Wrong Answer";
         overall = "Wrong Answer";
-        stderr = `Test #${i+1} expected ${exp}, got ${got}`;
+        stderr  = `Test #${i+1} expected ${exp}, got ${got}`;
       }
     } else {
       overall = status;
@@ -185,17 +192,14 @@ async function processSubmissionJob(job) {
   console.log(`✅  Done submission ${submissionId}: ${overall}`);
 }
 
+// ── Worker Bootstrapping ─────────────────────────────
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   (async () => {
     await connectDB();
-    const worker = new Worker(
-      "submission-processing",
-      processSubmissionJob,
-      {
-        connection: new IORedis(REDIS_CONN_OPTS),
-        concurrency: Number(process.env.WORKER_CONCURRENCY) || 1
-      }
-    );
+    const worker = new Worker("submission-processing", processSubmissionJob, {
+      connection: new IORedis(REDIS_CONN_OPTS),
+      concurrency: Number(process.env.WORKER_CONCURRENCY) || 1
+    });
     worker.on("completed", job => console.log(`✔️ Job ${job.id} completed`));
     worker.on("failed",    (job, err) => console.error(`❌ Job ${job.id} failed:`, err));
   })();
