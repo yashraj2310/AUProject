@@ -6,6 +6,7 @@ import os from "os";
 import Docker from "dockerode";
 import IORedis from "ioredis";
 import { Worker } from "bullmq";
+import { execSync } from "child_process";
 
 import connectDB from "../database/db.js";
 import { Submission } from "../models/submission.model.js";
@@ -40,7 +41,12 @@ async function executeInDocker(language, code, stdin, timeLimit, memKB, submissi
     let container = null;
   try {
     console.log("[DEBUG] Attempting to set permissions to 0o777...");
-    await fs.chmod(tmp, 0o777);
+    try {
+      execSync(`chmod 777 ${tmp}`);
+    } catch (err) {
+      console.error(`[FATAL] Shell chmod failed: ${err.message}`);
+      throw err;
+    }
     console.log("[DEBUG] Permissions set successfully.");
 
     const codeFile = cfg.sourceFile;
@@ -55,7 +61,7 @@ async function executeInDocker(language, code, stdin, timeLimit, memKB, submissi
     
     // DEBUG: Log the exact command we are sending to the container.
     console.log(`[DEBUG] Executing command: ${wrappedCommand}`);
-    
+    const bindMount = `${tmp}:/sandbox:z`; 
     const container = await docker.createContainer({
       Image: cfg.image,
       HostConfig: {
@@ -64,7 +70,7 @@ async function executeInDocker(language, code, stdin, timeLimit, memKB, submissi
         Memory: memKB * 1024,
         MemorySwap: memKB * 1024,
         PidsLimit: 64,
-        Binds: [`${tmp}:/sandbox:z`], // Use :z for SELinux compatibility
+        Binds: [bindMount], // Use :z for SELinux compatibility
       },
       WorkingDir: "/sandbox",
       Cmd: ["sh", "-c", wrappedCommand],
