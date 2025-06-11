@@ -117,7 +117,7 @@ async function executeSingleTestCaseInDocker(
     // 3) Create container
     const container = await docker.createContainer({
       Image: image,
-      User: process.env.DOCKER_CONTAINER_UID || "1001",
+      // User: process.env.DOCKER_CONTAINER_UID || "1001",
       HostConfig: {
         AutoRemove: true, // Let Docker clean up the container itself after it stops
         NetworkMode: "none",
