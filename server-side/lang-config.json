@@ -1,20 +1,24 @@
 {
   "cpp": {
     "image": "898465023886.dkr.ecr.ap-south-1.amazonaws.com/execution-engine-cpp:latest",
+    "sourceFile": "Main.cpp",
     "compile": "g++ -O2 -std=c++17 Main.cpp -o a.out",
     "run": "./a.out < input.txt > user_out.txt 2> user_err.txt"
   },
   "java": {
     "image": "898465023886.dkr.ecr.ap-south-1.amazonaws.com/execution-engine-java:latest",
+    "sourceFile": "Main.java",
     "compile": "javac Main.java",
     "run": "java Main < input.txt > user_out.txt 2> user_err.txt"
   },
   "javascript": {
     "image": "898465023886.dkr.ecr.ap-south-1.amazonaws.com/execution-engine-nodejs:latest",
+    "sourceFile": "script.js",
     "run": "node script.js < input.txt > user_out.txt 2> user_err.txt"
   },
   "python": {
     "image": "898465023886.dkr.ecr.ap-south-1.amazonaws.com/execution-engine-python:latest",
+    "sourceFile": "script.py",
     "run": "python3 script.py < input.txt > user_out.txt 2> user_err.txt"
   }
 }
