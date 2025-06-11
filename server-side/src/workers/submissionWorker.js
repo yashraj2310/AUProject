@@ -95,6 +95,7 @@ async function executeSingleTestCaseInDocker(
         `sub-${submissionIdForLog.toString().slice(-6)}-exec-`
       )
     );
+    await fs.chmod(tempDir, 0o755);
     const codeFileName = getCodeFileName(language);
     const codeFile = path.join(tempDir, codeFileName);
     const inputFile = path.join(tempDir, "input.txt");
