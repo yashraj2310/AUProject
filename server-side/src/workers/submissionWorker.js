@@ -55,7 +55,7 @@ async function executeInDocker(language, code, stdin, timeLimit, memKB, submissi
     
     // DEBUG: Log the exact command we are sending to the container.
     console.log(`[DEBUG] Executing command: ${wrappedCommand}`);
-
+    
     const container = await docker.createContainer({
       Image: cfg.image,
       HostConfig: {
@@ -64,7 +64,7 @@ async function executeInDocker(language, code, stdin, timeLimit, memKB, submissi
         Memory: memKB * 1024,
         MemorySwap: memKB * 1024,
         PidsLimit: 64,
-        Binds: [`${tmp}:/sandbox`],
+        Binds: [`${tmp}:/sandbox:z`], // Use :z for SELinux compatibility
       },
       WorkingDir: "/sandbox",
       Cmd: ["sh", "-c", wrappedCommand],
