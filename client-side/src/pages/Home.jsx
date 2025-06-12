@@ -201,7 +201,7 @@ export default function Home() {
                 <div className="p-6 flex-grow">
                   <div className="flex justify-between items-start mb-3">
                     <h3 className="text-xl font-semibold text-gray-100 leading-tight">
-                      <Link to={`/problem/${p._id}`} className="hover:text-blue-400 hover:underline">
+                      <Link to={`/problems/${p._id}`} className="hover:text-blue-400 hover:underline">
                         {p.title || "Untitled Problem"}
                       </Link>
                     </h3>
