@@ -1,127 +1,252 @@
 [
   {
     "title": "Two Sum",
-    "description": "<p>Given an array of integers <code>nums</code> and an integer <code>target</code>, return indices of the two numbers such that they add up to <code>target</code>.</p><p>You may assume that each input would have <strong>exactly one solution</strong>, and you may not use the same element twice.</p><p>You can return the answer in any order. Ensure your output is a JSON array of two numbers, sorted in ascending order (e.g., <code>[0,1]</code>).</p>",
+    "description": "<p>Given an array of integers <code>nums</code> and an integer <code>target</code>, return indices of the two numbers such that they add up to <code>target</code>.</p><p>You may assume that each input would have <strong>exactly one solution</strong>, and you may not use the same element twice.</p><p>You can return the answer in any order. Ensure your output is a JSON array of two numbers, sorted in ascending order (e.g., <code>[0,1]</code>).</p><p><strong>Constraints:</strong></p><ul><li>2 ≤ nums.length ≤ 10⁵</li><li>-10⁹ ≤ nums[i] ≤ 10⁹</li><li>-10⁹ ≤ target ≤ 10⁹</li></ul>",
     "difficulty": "Easy",
     "defaultLanguage": "javascript",
     "starterCode": {
-        "javascript": "// Input: Two lines - 1st: JSON array of numbers, 2nd: target integer\n// Output: JSON array of two indices\nfunction twoSum(nums, target) {\n    // Your logic here\n    console.error(\"Implement Two Sum in JavaScript\");\n    return [];\n}\n\nconst readline = require('readline');\nconst rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });\nlet inputLines = [];\nrl.on('line', (line) => inputLines.push(line));\nrl.on('close', () => {\n    if (inputLines.length < 2) return;\n    try {\n        const nums = JSON.parse(inputLines[0]);\n        const target = parseInt(inputLines[1]);\n        const result = twoSum(nums, target);\n        console.log(JSON.stringify(result));\n    } catch (e) { console.log(\"[]\"); }\n});",
-        "cpp": "#include <iostream>\n#include <vector>\n#include <string>\n#include <sstream>\n#include <algorithm>\n#include <map>\n\n// Input: Two lines - 1st: JSON array string, 2nd: target integer string\n// Output: JSON array string of two indices\nstd::vector<int> twoSum(const std::vector<int>& nums, int target) {\n    // Your logic here\n    // std::cerr << \"Implement Two Sum in C++\" << std::endl;\n    return {};\n}\n\nint main() {\n    std::ios_base::sync_with_stdio(false); std::cin.tie(NULL);\n    std::string nums_line, target_line;\n    std::getline(std::cin, nums_line);\n    std::getline(std::cin, target_line);\n    std::vector<int> nums_vec; \n    // TODO: Parse nums_line into nums_vec (e.g., \"[1,2,3]\")\n    int target_val = 0;\n    try { target_val = std::stoi(target_line); } catch (const std::exception& e) {}\n    std::vector<int> result = twoSum(nums_vec, target_val);\n    // TODO: Format result vector into JSON string (e.g., \"[0,1]\")\n    std::cout << \"[]\" << std::endl; \n    return 0;\n}",
-        "java": "import java.util.*;\n\npublic class Main {\n    public int[] twoSum(int[] nums, int target) {\n        // Your logic here\n        // System.err.println(\"Implement Two Sum in Java\");\n        return new int[]{};\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        String numsLine = sc.nextLine();\n        int target = Integer.parseInt(sc.nextLine());\n        sc.close();\n        // TODO: Parse numsLine (JSON array string) into int[] numsArray\n        // Main solver = new Main();\n        // int[] result = solver.twoSum(numsArray, target);\n        // System.out.println(Arrays.toString(result).replace(\" \", \"\")); \n        System.out.println(\"[]\");\n    }\n}",
-        "python": "import json\nimport sys\n\ndef two_sum(nums: list[int], target: int) -> list[int]:\n    # Your logic here\n    # print(\"Implement Two Sum in Python\", file=sys.stderr)\n    return []\n\nif __name__ == '__main__':\n    try:\n        nums_line = sys.stdin.readline()\n        target_line = sys.stdin.readline()\n        nums = json.loads(nums_line.strip())\n        target = int(target_line.strip())\n        result = two_sum(nums, target)\n        print(json.dumps(result, separators=(',',':')))\n    except:\n        print(\"[]\")\n"
+      "javascript": "// Input: Two lines – 1st: JSON array of numbers, 2nd: target integer\n// Output: JSON array of two indices\nfunction twoSum(nums, target) {\n    // TODO: implement two-sum logic\n    return [];\n}\n\nconst rl = require('readline').createInterface({ input: process.stdin });\nlet lines = [];\nrl.on('line', l => lines.push(l));\nrl.on('close', () => {\n  const nums = JSON.parse(lines[0]);\n  const target = Number(lines[1]);\n  console.log(JSON.stringify(twoSum(nums, target)));\n});",
+      "python": "import json, sys\n\ndef two_sum(nums, target):\n    # TODO: implement two-sum logic\n    return []\n\nlines = sys.stdin.read().splitlines()\nnums = json.loads(lines[0])\ntarget = int(lines[1])\nprint(json.dumps(two_sum(nums, target)))",
+      "java": "import java.util.*;\npublic class Main {\n  public static int[] twoSum(int[] nums, int target) {\n    // TODO: implement two-sum logic\n    return new int[]{};\n  }\n  public static void main(String[] args) {\n    Scanner sc = new Scanner(System.in);\n    String numsLine = sc.nextLine();\n    int target = Integer.parseInt(sc.nextLine());\n    // parse numsLine into int[] nums\n    int[] result = twoSum(/*nums*/, target);\n    System.out.println(Arrays.toString(result).replace(\" \", \"\"));\n    sc.close();\n  }\n}",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\nvector<int> twoSum(const vector<int>& nums, int target) {\n    // TODO: implement two-sum logic\n    return {};\n}\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(NULL);\n    string line;\n    getline(cin, line);\n    // parse JSON array 'line' into vector<int> nums\n    getline(cin, line);\n    int target = stoi(line);\n    auto res = twoSum(/*nums*/, target);\n    // TODO: print res as JSON array\n    cout << \"[]\";\n    return 0;\n}"
     },
     "tags": ["Array", "Hash Table"],
     "testCases": [
-      { "input": "[2,7,11,15]\n9", "expectedOutput": "[0,1]", "isSample": true },
-      { "input": "[3,2,4]\n6", "expectedOutput": "[1,2]", "isSample": false },
-      { "input": "[3,3]\n6", "expectedOutput": "[0,1]", "isSample": false },
-      { "input": "[0,4,3,0]\n0", "expectedOutput": "[0,3]", "isSample": false },
-      { "input": "[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]\n39", "expectedOutput": "[18,19]", "isSample": false },
-      { "input": "[-10,-20,5,15,25,50]\n-5", "expectedOutput": "[2,4]", "isSample": false }
+      { "input": "[2,7,11,15]\\n9", "expectedOutput": "[0,1]", "isSample": true },
+      { "input": "[3,2,4]\\n6", "expectedOutput": "[1,2]", "isSample": true },
+      { "input": "[3,3]\\n6", "expectedOutput": "[0,1]", "isSample": true },
+      { "input": "[0,4,3,0]\\n0", "expectedOutput": "[0,3]", "isSample": true },
+      { "input": "[1,5,3,2]\\n7", "expectedOutput": "[1,3]", "isSample": true },
+      { "input": "[-1,-2,-3,-4,-5]\\n-8", "expectedOutput": "[2,4]", "isSample": true },
+      { "input": "[100,200,300,400]\\n500", "expectedOutput": "[0,3]", "isSample": true },
+      { "input": "[1,1,1,1]\\n2", "expectedOutput": "[0,1]", "isSample": true }
     ],
     "cpuTimeLimit": 1,
     "memoryLimit": 131072
   },
   {
     "title": "Prefix Sum",
-    "description": "<p>Given an array of integers, compute the prefix sum array of the same length, where <code>prefix[i]</code> is the sum of all elements up to index <code>i</code> (inclusive).</p><p>Input is a single line JSON array. Output should be a single line JSON array of prefix sums.</p><p>Your Java class name must be <code>Main</code>.</p>",
+    "description": "<p>Given an array of integers, compute the prefix sum array where <code>prefix[i]</code> = sum of elements <code>nums[0..i]</code>.</p><p><strong>Constraints:</strong></p><ul><li>1 ≤ nums.length ≤ 10⁶</li><li>-10⁹ ≤ nums[i] ≤ 10⁹</li></ul>",
     "difficulty": "Easy",
     "defaultLanguage": "java",
     "starterCode": {
-        "java": "import java.util.Scanner;\nimport java.util.ArrayList;\nimport java.util.List;\n\npublic class Main {\n    public static List<Long> calculatePrefixSum(List<Integer> arr) {\n        List<Long> prefixSums = new ArrayList<>();\n        if (arr == null || arr.isEmpty()) {\n            return prefixSums;\n        }\n        // Your core logic to calculate prefix sums here\n        // Example: \n        // prefixSums.add((long)arr.get(0));\n        // for (int i = 1; i < arr.size(); i++) {\n        //     prefixSums.add(prefixSums.get(i - 1) + arr.get(i));\n        // }\n        // System.err.println(\"Implement Prefix Sum logic in Java\");\n        return prefixSums;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        String line = \"\";\n        if (sc.hasNextLine()) { line = sc.nextLine(); }\n        sc.close();\n        List<Integer> arr = new ArrayList<>();\n        if (line.startsWith(\"[\") && line.endsWith(\"]\") && line.length() >= 2) {\n            String content = line.substring(1, line.length() - 1).trim();\n            if (!content.isEmpty()) {\n                String[] numbersStr = content.split(\",\");\n                for (String numStr : numbersStr) {\n                    String trimmedNumStr = numStr.trim();\n                    if (!trimmedNumStr.isEmpty()) {\n                        try { arr.add(Integer.parseInt(trimmedNumStr)); }\n                        catch (NumberFormatException e) { /* Ignore malformed numbers */ }\n                    }\n                }\n            }\n        }\n        List<Long> result = calculatePrefixSum(arr);\n        System.out.print(\"[\");\n        for (int i = 0; i < result.size(); i++) {\n            System.out.print(result.get(i));\n            if (i < result.size() - 1) System.out.print(\",\");\n        }\n        System.out.println(\"]\");\n    }\n}",
-        "cpp": "#include <iostream>\n#include <vector>\n#include <string>\n#include <sstream>\n\nstd::vector<long long> calculatePrefixSum(const std::vector<int>& arr) {\n    // Your logic here\n    // std::cerr << \"Implement Prefix Sum in C++\" << std::endl;\n    return {};\n}\n\n// Helper to parse JSON array string (basic)\nstd::vector<int> parseInput(const std::string& line) { /* ... implementation ... */ return {}; }\n// Helper to format output JSON array string (basic)\nstd::string formatOutput(const std::vector<long long>& nums) { /* ... implementation ... */ return \"[]\"; }\n\nint main() {\n    std::ios_base::sync_with_stdio(false); std::cin.tie(NULL);\n    std::string line;\n    std::getline(std::cin, line);\n    std::vector<int> arr = parseInput(line);\n    std::vector<long long> result = calculatePrefixSum(arr);\n    std::cout << formatOutput(result) << std::endl;\n    return 0;\n}",
-        "python": "import json\nimport sys\n\ndef calculate_prefix_sum(arr: list[int]) -> list[int]:\n    # Your logic here\n    # print(\"Implement Prefix Sum in Python\", file=sys.stderr)\n    return []\n\nif __name__ == '__main__':\n    try:\n        line = sys.stdin.readline()\n        arr = json.loads(line.strip())\n        result = calculate_prefix_sum(arr)\n        print(json.dumps(result, separators=(',',':')))\n    except:\n        print(\"[]\")\n",
-        "javascript": "function calculatePrefixSum(arr) {\n    // Your logic here\n    console.error(\"Implement Prefix Sum in JavaScript\");\n    return [];\n}\n\nconst readline = require('readline');\nconst rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });\nrl.once('line', (line) => {\n    try {\n        const arr = JSON.parse(line);\n        const result = calculatePrefixSum(arr);\n        console.log(JSON.stringify(result));\n    } catch (e) { console.log(\"[]\"); }\n    rl.close();\n});"
+      "javascript": "// Input: one line JSON array of integers\n// Output: one line JSON array of prefix sums\nfunction prefixSum(nums) {\n  // TODO: implement prefix sum\n  return [];\n}\nrequire('readline').createInterface({ input: process.stdin })\n  .on('line', l => {\n    const nums = JSON.parse(l);\n    console.log(JSON.stringify(prefixSum(nums)));\n  });",
+      "python": "import json, sys\n\ndef prefix_sum(nums):\n    # TODO: implement prefix sum\n    return []\n\nnums = json.loads(sys.stdin.readline())\nprint(json.dumps(prefix_sum(nums)))",
+      "java": "import java.util.*;\npublic class Main {\n  public static List<Long> prefixSum(List<Integer> nums) {\n    // TODO: implement prefix sum\n    return new ArrayList<>();\n  }\n  public static void main(String[] args) {\n    Scanner sc = new Scanner(System.in);\n    String line = sc.nextLine();\n    // parse line into List<Integer> nums\n    List<Long> res = prefixSum(/*nums*/);\n    System.out.println(res);\n    sc.close();\n  }\n}",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\nvector<long long> prefixSum(const vector<int>& nums) {\n    // TODO: implement prefix sum\n    return {};\n}\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(NULL);\n    string line;\n    getline(cin, line);\n    // parse JSON array 'line' into vector<int> nums\n    auto res = prefixSum(/*nums*/);\n    // TODO: print res as JSON array\n    cout << \"[]\";\n    return 0;\n}"
     },
     "tags": ["Array", "Prefix Sum"],
     "testCases": [
-      { "input": "[1]", "expectedOutput": "[1]", "isSample": true },
       { "input": "[1,2,3,4,5]", "expectedOutput": "[1,3,6,10,15]", "isSample": true },
-      { "input": "[10,20]", "expectedOutput": "[10,30]", "isSample": false },
-      { "input": "[-1,-2,-3,-4,-5,-6,-7,-8,-9,-10]", "expectedOutput": "[-1,-3,-6,-10,-15,-21,-28,-36,-45,-55]", "isSample": false },
-      { "input": "[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]", "expectedOutput": "[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]", "isSample": false },
-      { "input": "[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]", "expectedOutput": "[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]", "isSample": false },
-      { "input": "[2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2]", "expectedOutput": "[2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,56,58,60,62,64,66,68,70,72,74,76,78,80,82,84,86,88,90,92,94,96,98,100,102,104,106,108,110,112,114,116,118,120,122,124,126,128,130,132,134,136,138,140,142,144,146,148,150,152,154,156,158,160,162,164,166,168,170,172,174,176,178,180,182,184,186,188,190,192,194,196,198,200]", "isSample": false }
+      { "input": "[0,0,0,0]", "expectedOutput": "[0,0,0,0]", "isSample": true },
+      { "input": "[-1,1,-1,1]", "expectedOutput": "[-1,0,-1,0]", "isSample": true },
+      { "input": "[5]", "expectedOutput": "[5]", "isSample": true },
+      { "input": "[10,20,30]", "expectedOutput": "[10,30,60]", "isSample": true },
+      { "input": "[100,-50,50]", "expectedOutput": "[100,50,100]", "isSample": true },
+      { "input": "[1,1,1,1,1]", "expectedOutput": "[1,2,3,4,5]", "isSample": true },
+      { "input": "[-5,-5,-5]", "expectedOutput": "[-5,-10,-15]", "isSample": true }
     ],
     "cpuTimeLimit": 2,
     "memoryLimit": 262144
   },
   {
     "title": "Reverse String",
-    "description": "<p>Write a function that reverses a string. The input string is given as an array of characters <code>s</code>...</p>",
+    "description": "<p>Write a function that reverses a string in place. The input is given as an array of characters <code>s</code>.</p><p><strong>Constraints:</strong></p><ul><li>1 ≤ s.length ≤ 10⁵</li></ul>",
     "difficulty": "Easy",
     "defaultLanguage": "python",
     "starterCode": {
-        "python": "import json\nimport sys\n\ndef reverseString(s: list[str]) -> None:\n    # Your logic here to modify s in-place\n    # print(\"Implement Reverse String in Python\", file=sys.stderr)\n    pass\n\nif __name__ == '__main__':\n    try:\n        line = sys.stdin.readline()\n        s_array = json.loads(line.strip())\n        reverseString(s_array)\n        print(json.dumps(s_array, separators=(',',':')))\n    except:\n        print(\"[]\")\n",
-        "cpp": "#include <iostream>\n#include <vector>\n#include <string>\n#include <algorithm>\n#include <sstream>\n\nvoid reverseString(std::vector<char>& s) {\n    // Your logic here to modify s in-place\n    // std::cerr << \"Implement Reverse String in C++\" << std::endl;\n}\n\n// You would need robust JSON parsing for char arrays for C++\nstd::vector<char> parseInput(const std::string& line) { return {}; }\nstd::string formatOutput(const std::vector<char>& s) { return \"[]\"; }\n\nint main() {\n    std::ios_base::sync_with_stdio(false); std::cin.tie(NULL);\n    std::string line;\n    std::getline(std::cin, line);\n    std::vector<char> s_array = parseInput(line);\n    reverseString(s_array);\n    std::cout << formatOutput(s_array) << std::endl;\n    return 0;\n}",
-        "java": "import java.util.*;\n\npublic class Main {\n    public void reverseString(char[] s) {\n        // Your logic here to modify s in-place\n        // System.err.println(\"Implement Reverse String in Java\");\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        String line = \"\";\n        if (sc.hasNextLine()) { line = sc.nextLine(); }\n        sc.close();\n        // TODO: Parse line (JSON array of chars) into char[] s_array\n        char[] s_array = new char[]{}; // Placeholder\n        new Main().reverseString(s_array);\n        // TODO: Print s_array as JSON array string\n        System.out.println(\"[]\"); // Placeholder\n    }\n}",
-        "javascript": "function reverseString(s) {\n    // Your logic here to modify s in-place\n    console.error(\"Implement Reverse String in JavaScript\");\n}\n\nconst readline = require('readline');\nconst rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });\nrl.once('line', (line) => {\n    try {\n        const s_array = JSON.parse(line);\n        reverseString(s_array);\n        console.log(JSON.stringify(s_array));\n    } catch (e) { console.log(\"[]\"); }\n    rl.close();\n});"
+      "javascript": "// Input: one line JSON array of chars\n// Output: JSON array after in-place reverse\nfunction reverseString(s) {\n  // TODO: reverse in-place\n}\nrequire('readline').createInterface({ input: process.stdin })\n  .on('line', l => {\n    const s = JSON.parse(l);\n    reverseString(s);\n    console.log(JSON.stringify(s));\n  });",
+      "python": "import json, sys\n\ndef reverse_string(s):\n    # TODO: reverse list s in-place\n    pass\n\ns = json.loads(sys.stdin.readline())\nreverse_string(s)\nprint(json.dumps(s))",
+      "java": "import java.util.*;\npublic class Main {\n  public static void reverseString(char[] s) {\n    // TODO: reverse in-place\n  }\n  public static void main(String[] args) {\n    Scanner sc = new Scanner(System.in);\n    String line = sc.nextLine();\n    // parse JSON array into char[] s\n    reverseString(/*s*/);\n    // TODO: print s as JSON array\n    sc.close();\n  }\n}",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\nvoid reverseString(vector<char>& s) {\n    // TODO: reverse in-place\n}\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(NULL);\n    string line;\n    getline(cin, line);\n    // parse JSON array into vector<char> s\n    reverseString(/*s*/);\n    // TODO: print s as JSON array\n    cout << \"[]\";\n    return 0;\n}"
     },
     "tags": ["String", "Two Pointers"],
     "testCases": [
-      { "input": "[\"a\"]", "expectedOutput": "[\"a\"]", "isSample": true },
       { "input": "[\"h\",\"e\",\"l\",\"l\",\"o\"]", "expectedOutput": "[\"o\",\"l\",\"l\",\"e\",\"h\"]", "isSample": true },
-      { "input": "[\"S\",\"o\",\"r\",\"t\",\"M\",\"e\"]", "expectedOutput": "[\"e\",\"M\",\"t\",\"r\",\"o\",\"S\"]", "isSample": false },
-      { "input": "[\"1\",\"2\",\"3\",\"4\",\"5\",\"6\",\"7\",\"8\",\"9\",\"0\"]", "expectedOutput": "[\"0\",\"9\",\"8\",\"7\",\"6\",\"5\",\"4\",\"3\",\"2\",\"1\"]", "isSample": false },
-      { "input": "[\"a\",\"b\",\"c\",\"d\",\"e\",\"f\",\"g\",\"h\",\"i\",\"j\",\"k\",\"l\",\"m\",\"n\",\"o\",\"p\",\"q\",\"r\",\"s\",\"t\"]", "expectedOutput": "[\"t\",\"s\",\"r\",\"q\",\"p\",\"o\",\"n\",\"m\",\"l\",\"k\",\"j\",\"i\",\"h\",\"g\",\"f\",\"e\",\"d\",\"c\",\"b\",\"a\"]", "isSample": false },
-      { "input": "[\"L\",\"o\",\"n\",\"g\",\"e\",\"r\",\"S\",\"t\",\"r\",\"i\",\"n\",\"g\",\"F\",\"o\",\"r\",\"T\",\"e\",\"s\",\"t\",\"i\",\"n\",\"g\"]", "expectedOutput": "[\"g\",\"n\",\"i\",\"t\",\"s\",\"e\",\"T\",\"r\",\"o\",\"F\",\"g\",\"n\",\"i\",\"r\",\"t\",\"S\",\"r\",\"e\",\"g\",\"n\",\"o\",\"L\"]", "isSample": false}
+      { "input": "[\"A\"]", "expectedOutput": "[\"A\"]", "isSample": true },
+      { "input": "[\"a\",\"b\"]", "expectedOutput": "[\"b\",\"a\"]", "isSample": true },
+      { "input": "[\"1\",\"2\",\"3\"]", "expectedOutput": "[\"3\",\"2\",\"1\"]", "isSample": true },
+      { "input": "[\"X\",\"Y\",\"Z\"]", "expectedOutput": "[\"Z\",\"Y\",\"X\"]", "isSample": true },
+      { "input": "[\" \",\" \"]", "expectedOutput": "[\" \",\" \"]", "isSample": true },
+      { "input": "[\"m\",\"a\",\"d\",\"a\",\"m\"]", "expectedOutput": "[\"m\",\"a\",\"d\",\"a\",\"m\"]", "isSample": true },
+      { "input": "[\"1\",\"0\",\"0\",\"1\"]", "expectedOutput": "[\"1\",\"0\",\"0\",\"1\"]", "isSample": true }
     ],
     "cpuTimeLimit": 1,
-    "memoryLimit": 65536 
+    "memoryLimit": 65536
   },
   {
     "title": "Palindrome Check",
-    "description": "<p>Given a string <code>s</code>, determine if it is a palindrome, considering only alphanumeric characters and ignoring cases...</p>",
+    "description": "<p>Determine if a string <code>s</code> is a palindrome, considering only alphanumeric characters and ignoring cases.</p><p><strong>Constraints:</strong></p><ul><li>0 ≤ s.length ≤ 10⁵</li></ul>",
     "difficulty": "Easy",
     "defaultLanguage": "javascript",
     "starterCode": {
-      "javascript": "function isPalindrome(s) {\n    // Your logic here\n    console.error(\"Implement Palindrome Check in JavaScript\");\n    return false;\n}\n\nconst readline = require('readline');\nconst rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });\nrl.once('line', (line) => {\n    try {\n        const result = isPalindrome(line);\n        console.log(result.toString());\n    } catch (e) { console.log(\"false\"); }\n    rl.close();\n});",
-      "cpp": "#include <iostream>\n#include <string>\n#include <algorithm>\n#include <cctype>\nbool isPalindrome(std::string s) {\n    // Your logic here\n    // std::cerr << \"Implement Palindrome Check in C++\" << std::endl;\n    return false;\n}\n\nint main() {\n    std::ios_base::sync_with_stdio(false); std::cin.tie(NULL);\n    std::string s;\n    std::getline(std::cin, s);\n    std::cout << (isPalindrome(s) ? \"true\" : \"false\") << std::endl;\n    return 0;\n}",
-      "java": "import java.util.Scanner;\n\npublic class Main {\n    public boolean isPalindrome(String s) {\n        // Your logic here\n        // System.err.println(\"Implement Palindrome Check in Java\");\n        return false;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        String s = \"\";\n        if (sc.hasNextLine()) { s = sc.nextLine(); }\n        sc.close();\n        boolean result = new Main().isPalindrome(s);\n        System.out.println(result);\n    }\n}",
-      "python": "import sys\n\ndef is_palindrome(s: str) -> bool:\n    # Your logic here\n    # print(\"Implement Palindrome Check in Python\", file=sys.stderr)\n    return False\n\nif __name__ == '__main__':\n    try:\n        s = sys.stdin.readline().strip()\n        result = is_palindrome(s)\n        print(str(result).lower())\n    except:\n        print(\"false\")\n"
+      "javascript": "function isPalindrome(s) {\n  // TODO: implement palindrome check\n  return false;\n}\nrequire('readline').createInterface({ input: process.stdin })\n  .on('line', l => { console.log(isPalindrome(l)); });",
+      "python": "import sys, re\n\ndef is_palindrome(s):\n    # TODO: implement palindrome check\n    return False\nprint(is_palindrome(sys.stdin.readline().strip()))",
+      "java": "import java.util.*;\npublic class Main {\n  public static boolean isPalindrome(String s) {\n    // TODO: implement palindrome check\n    return false;\n  }\n  public static void main(String[] args) {\n    Scanner sc = new Scanner(System.in);\n    String s = sc.nextLine();\n    System.out.println(isPalindrome(s));\n    sc.close();\n  }\n}",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\nbool isPalindrome(string s) {\n    // TODO: implement palindrome check\n    return false;\n}\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(NULL);\n    string s;\n    getline(cin, s);\n    cout << (isPalindrome(s) ? \"true\" : \"false\");\n    return 0;\n}"
     },
-    "tags": ["String", "Two Pointers", "Palindrome"],
+    "tags": ["String", "Two Pointers"],
     "testCases": [
       { "input": "A man, a plan, a canal: Panama", "expectedOutput": "true", "isSample": true },
       { "input": "race a car", "expectedOutput": "false", "isSample": true },
-      { "input": " ", "expectedOutput": "true", "isSample": false },
-      { "input": "Was it a car or a cat I saw?", "expectedOutput": "true", "isSample": false },
-      { "input": "0P", "expectedOutput": "false", "isSample": false },
-      { "input": "madamimadam", "expectedOutput": "true", "isSample": false },
-      { "input": "Step on no pets!!", "expectedOutput": "true", "isSample": false },
-      { "input": "Rotor", "expectedOutput": "true", "isSample": false },
-      { "input": "A Toyota! Race fast, safe car! A Toyota!", "expectedOutput": "true", "isSample": false},
-      { "input": "This is definitely not a palindrome string.", "expectedOutput": "false", "isSample": false }
+      { "input": "", "expectedOutput": "true", "isSample": true },
+      { "input": "aa", "expectedOutput": "true", "isSample": true },
+      { "input": "aba", "expectedOutput": "true", "isSample": true },
+      { "input": "abcba", "expectedOutput": "true", "isSample": true },
+      { "input": "abccba", "expectedOutput": "true", "isSample": true },
+      { "input": "No lemon, no melon", "expectedOutput": "true", "isSample": true }
     ],
     "cpuTimeLimit": 1,
-    "memoryLimit": 131072 
+    "memoryLimit": 131072
   },
   {
     "title": "Longest Substring Without Repeating Characters",
-    "description": "<p>Given a string <code>s</code>, find the length of the longest substring without repeating characters...</p>",
+    "description": "<p>Given a string <code>s</code>, find length of the longest substring without repeating characters.</p><p><strong>Constraints:</strong></p><ul><li>0 ≤ s.length ≤ 10⁵</li></ul>",
     "difficulty": "Medium",
     "defaultLanguage": "javascript",
     "starterCode": {
-      "javascript": "function lengthOfLongestSubstring(s) {\n    // Your logic here\n    console.error(\"Implement Longest Substring in JavaScript\");\n    return 0;\n}\n\nconst readline = require('readline');\nconst rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: false });\nrl.once('line', (line) => {\n    try {\n        const result = lengthOfLongestSubstring(line);\n        console.log(result);\n    } catch (e) { console.log(0); }\n    rl.close();\n});",
-      "cpp": "#include <iostream>\n#include <string>\n#include <unordered_set>\n#include <algorithm>\n\nint lengthOfLongestSubstring(std::string s) {\n    // Your logic here\n    // std::cerr << \"Implement Longest Substring in C++\" << std::endl;\n    return 0;\n}\n\nint main() {\n    std::ios_base::sync_with_stdio(false); std::cin.tie(NULL);\n    std::string s;\n    std::getline(std::cin, s);\n    std::cout << lengthOfLongestSubstring(s) << std::endl;\n    return 0;\n}",
-      "java": "import java.util.Scanner;\nimport java.util.HashSet;\nimport java.util.Set;\n\npublic class Main {\n    public int lengthOfLongestSubstring(String s) {\n        // Your logic here\n        // System.err.println(\"Implement Longest Substring in Java\");\n        return 0;\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        String s = \"\";\n        if (sc.hasNextLine()) { s = sc.nextLine(); }\n        sc.close();\n        int result = new Main().lengthOfLongestSubstring(s);\n        System.out.println(result);\n    }\n}",
-      "python": "import sys\n\ndef length_of_longest_substring(s: str) -> int:\n    # Your logic here\n    # print(\"Implement Longest Substring in Python\", file=sys.stderr)\n    return 0\n\nif __name__ == '__main__':\n    try:\n        s = sys.stdin.readline().strip()\n        result = length_of_longest_substring(s)\n        print(result)\n    except:\n        print(0)\n"
+      "javascript": "function lengthOfLongestSubstring(s) {\n  // TODO: implement sliding-window\n  return 0;\n}\nrequire('readline').createInterface({ input: process.stdin })\n  .on('line', l => { console.log(lengthOfLongestSubstring(l)); });",
+      "python": "import sys\n\ndef length_of_longest_substring(s):\n    # TODO: implement sliding-window\n    return 0\nprint(length_of_longest_substring(sys.stdin.readline().strip()))",
+      "java": "import java.util.*;\npublic class Main {\n  public static int lengthOfLongestSubstring(String s) {\n    // TODO: implement sliding-window\n    return 0;\n  }\n  public static void main(String[] args) {\n    Scanner sc = new Scanner(System.in);\n    String s = sc.nextLine();\n    System.out.println(lengthOfLongestSubstring(s));\n    sc.close();\n  }\n}",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\nint lengthOfLongestSubstring(string s) {\n    // TODO: implement sliding-window\n    return 0;\n}\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(NULL);\n    string s;\n    getline(cin, s);\n    cout << lengthOfLongestSubstring(s);\n    return 0;\n}"
     },
-    "tags": ["String", "Sliding Window", "Hash Table", "Set"],
+    "tags": ["String", "Sliding Window", "Hash Table"],
     "testCases": [
       { "input": "abcabcbb", "expectedOutput": "3", "isSample": true },
       { "input": "bbbbb", "expectedOutput": "1", "isSample": true },
-      { "input": "pwwkew", "expectedOutput": "3", "isSample": false },
-      { "input": "", "expectedOutput": "0", "isSample": false },
-      { "input": "abcdefghijklmnopqrstuvwxyz", "expectedOutput": "26", "isSample": false },
-      { "input": "abacaba", "expectedOutput": "3", "isSample": false },
-      { "input": "zzzzabcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789zzzz", "expectedOutput": "62", "isSample": false },
-      { "input": "tmmzuxt", "expectedOutput": "5", "isSample": false },
-      { "input": "au", "expectedOutput": "2", "isSample": false},
-      { "input": "a", "expectedOutput": "1", "isSample": false},
-      { "input": "abcdefgfedcba", "expectedOutput": "7", "isSample": false}
+      { "input": "pwwkew", "expectedOutput": "3", "isSample": true },
+      { "input": "", "expectedOutput": "0", "isSample": true },
+      { "input": " ", "expectedOutput": "1", "isSample": true },
+      { "input": "au", "expectedOutput": "2", "isSample": true },
+      { "input": "dvdf", "expectedOutput": "3", "isSample": true },
+      { "input": "tmmzuxt", "expectedOutput": "5", "isSample": true }
     ],
     "cpuTimeLimit": 1,
-    "memoryLimit": 131072 
+    "memoryLimit": 131072
+  },
+  {
+    "title": "Valid Parentheses",
+    "description": "<p>Given a string <code>s</code> containing just the characters '(', ')', '{', '}', '[' and ']', determine if the input string is valid.</p><p><strong>Constraints:</strong></p><ul><li>1 ≤ s.length ≤ 10⁴</li></ul>",
+    "difficulty": "Easy",
+    "defaultLanguage": "python",
+    "starterCode": {
+      "javascript": "function isValid(s) {\n  // TODO: implement stack-based check\n  return false;\n}\nrequire('readline').createInterface({ input: process.stdin })\n  .on('line', l => { console.log(isValid(l)); });",
+      "python": "import sys\n\ndef is_valid(s):\n    # TODO: implement stack-based check\n    return False\nprint(is_valid(sys.stdin.readline().strip()))",
+      "java": "import java.util.*;\npublic class Main {\n  public static boolean isValid(String s) {\n    // TODO: implement stack-based check\n    return false;\n  }\n  public static void main(String[] args) {\n    Scanner sc = new Scanner(System.in);\n    System.out.println(isValid(sc.nextLine()));\n    sc.close();\n  }\n}",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\nbool isValid(string s) {\n    // TODO: implement stack-based check\n    return false;\n}\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(NULL);\n    string s;\n    getline(cin, s);\n    cout << (isValid(s) ? \"true\" : \"false\");\n    return 0;\n}"
+    },
+    "tags": ["Stack", "String"],
+    "testCases": [
+      { "input": "()", "expectedOutput": "True", "isSample": true },
+      { "input": "()[]{}", "expectedOutput": "True", "isSample": true },
+      { "input": "(]", "expectedOutput": "False", "isSample": true },
+      { "input": "([)]", "expectedOutput": "False", "isSample": true },
+      { "input": "{[]}", "expectedOutput": "True", "isSample": true },
+      { "input": "", "expectedOutput": "True", "isSample": true },
+      { "input": "(((((", "expectedOutput": "False", "isSample": true },
+      { "input": "))))", "expectedOutput": "False", "isSample": true }
+    ],
+    "cpuTimeLimit": 1,
+    "memoryLimit": 65536
+  },
+  {
+    "title": "Merge Two Sorted Lists",
+    "description": "<p>Merge two sorted linked lists and return it as a sorted list.</p><p><strong>Constraints:</strong></p><ul><li>0 ≤ list1.length, list2.length ≤ 10⁴</li><li>-10⁹ ≤ Node.val ≤ 10⁹</li></ul>",
+    "difficulty": "Easy",
+    "defaultLanguage": "java",
+    "starterCode": {
+      "javascript": "// Input: two lines JSON arrays for list1 and list2 of integers\n// Output: JSON array of merged list\nfunction mergeTwoLists(l1, l2) {\n  // TODO: implement merge logic\n  return [];\n}\nrequire('readline').createInterface({ input: process.stdin })\n  .on('line', (l, i) => {\n    if (i === 0) this.a = JSON.parse(l);\n    else {\n      this.b = JSON.parse(l);\n      console.log(JSON.stringify(mergeTwoLists(this.a, this.b)));\n    }\n  });",
+      "python": "import json, sys\n\ndef merge_two_lists(l1, l2):\n    # TODO: implement merge logic\n    return []\n\nlines = sys.stdin.read().splitlines()\nl1 = json.loads(lines[0])\nl2 = json.loads(lines[1])\nprint(json.dumps(merge_two_lists(l1, l2)))",
+      "java": "import java.util.*;\nclass ListNode { int val; ListNode next; }\npublic class Main {\n  public static ListNode mergeTwoLists(ListNode l1, ListNode l2) {\n    // TODO: implement merge logic\n    return null;\n  }\n  public static void main(String[] args) {\n    // parse two lines into ListNode l1, l2\n    ListNode res = mergeTwoLists(/*l1*/, /*l2*/);\n    // TODO: print res as JSON array\n  }\n}",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\nstruct ListNode { int val; ListNode* next; };\nListNode* mergeTwoLists(ListNode* l1, ListNode* l2) {\n    // TODO: implement merge logic\n    return nullptr;\n}\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(NULL);\n    // parse two lines into linked lists l1, l2\n    ListNode* res = mergeTwoLists(/*l1*/, /*l2*/);\n    // TODO: print res as JSON array\n    return 0;\n}"
+    },
+    "tags": ["Linked List", "Recursion"],
+    "testCases": [
+      { "input": "[1,2,4]\\n[1,3,4]", "expectedOutput": "[1,1,2,3,4,4]", "isSample": true },
+      { "input": "[]\\n[]", "expectedOutput": "[]", "isSample": true },
+      { "input": "[0]\\n[]", "expectedOutput": "[0]", "isSample": true },
+      { "input": "[]\\n[0]", "expectedOutput": "[0]", "isSample": true },
+      { "input": "[2,5,7]\\n[1,3,4]", "expectedOutput": "[1,2,3,4,5,7]", "isSample": true },
+      { "input": "[1,1]\\n[1,1]", "expectedOutput": "[1,1,1,1]", "isSample": true },
+      { "input": "[-1,0]\\n[1,2]", "expectedOutput": "[-1,0,1,2]", "isSample": true },
+      { "input": "[5]\\n[3,4,6]", "expectedOutput": "[3,4,5,6]", "isSample": true }
+    ],
+    "cpuTimeLimit": 1,
+    "memoryLimit": 131072
+  },
+  {
+    "title": "Climbing Stairs",
+    "description": "<p>Each time you can climb 1 or 2 steps. In how many distinct ways can you climb to the top?</p><p><strong>Constraints:</strong></p><ul><li>1 ≤ n ≤ 45</li></ul>",
+    "difficulty": "Easy",
+    "defaultLanguage": "cpp",
+    "starterCode": {
+      "javascript": "// Input: single integer n\n// Output: number of ways\nfunction climbStairs(n) {\n  // TODO: implement DP\n  return 0;\n}\nrequire('readline').createInterface({ input: process.stdin })\n  .on('line', l => console.log(climbStairs(Number(l))));",
+      "python": "import sys\n\ndef climb_stairs(n):\n    # TODO: implement DP\n    return 0\n\nprint(climb_stairs(int(sys.stdin.readline())))",
+      "java": "import java.util.*;\npublic class Main {\n  public static int climbStairs(int n) {\n    // TODO: implement DP\n    return 0;\n  }\n  public static void main(String[] args) {\n    Scanner sc = new Scanner(System.in);\n    System.out.println(climbStairs(sc.nextInt()));\n    sc.close();\n  }\n}",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\nint climbStairs(int n) {\n  // TODO: implement DP\n  return 0;\n}\nint main(){\n  ios::sync_with_stdio(false);\n  cin.tie(NULL);\n  int n; cin>>n;\n  cout<<climbStairs(n);\n  return 0;\n}"
+    },
+    "tags": ["Dynamic Programming"],
+    "testCases": [
+      { "input": "1", "expectedOutput": "1", "isSample": true },
+      { "input": "2", "expectedOutput": "2", "isSample": true },
+      { "input": "3", "expectedOutput": "3", "isSample": true },
+      { "input": "4", "expectedOutput": "5", "isSample": true },
+      { "input": "5", "expectedOutput": "8", "isSample": true },
+      { "input": "6", "expectedOutput": "13", "isSample": true },
+      { "input": "7", "expectedOutput": "21", "isSample": true },
+      { "input": "8", "expectedOutput": "34", "isSample": true }
+    ],
+    "cpuTimeLimit": 1,
+    "memoryLimit": 65536
+  },
+  {
+    "title": "Maximum Subarray",
+    "description": "<p>Find the contiguous subarray with the largest sum and return its sum.</p><p><strong>Constraints:</strong></p><ul><li>1 ≤ nums.length ≤ 10⁵</li><li>-10⁴ ≤ nums[i] ≤ 10⁴</li></ul>",
+    "difficulty": "Medium",
+    "defaultLanguage": "cpp",
+    "starterCode": {
+      "javascript": "// Input: first number k = length, followed by k nums\n// Output: max subarray sum\nfunction maxSubArray(nums) {\n  // TODO: implement Kadane’s algorithm\n  return 0;\n}\nrequire('readline').createInterface({ input: process.stdin })\n  .on('line', l => {\n    const parts = l.split(' ').map(Number);\n    const k = parts[0];\n    console.log(maxSubArray(parts.slice(1)));\n  });",
+      "python": "import sys\n\ndef max_sub_array(nums):\n    # TODO: implement Kadane’s algorithm\n    return 0\n\narr = list(map(int, sys.stdin.read().split()))\nk = arr[0]\nprint(max_sub_array(arr[1:]))",
+      "java": "import java.util.*;\npublic class Main {\n  public static int maxSubArray(int[] nums) {\n    // TODO: implement Kadane’s algorithm\n    return 0;\n  }\n  public static void main(String[] args) {\n    Scanner sc = new Scanner(System.in);\n    int k = sc.nextInt();\n    int[] nums = new int[k];\n    for (int i = 0; i < k; i++) nums[i] = sc.nextInt();\n    System.out.println(maxSubArray(nums));\n    sc.close();\n  }\n}",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\nint maxSubArray(vector<int>& nums) {\n  // TODO: implement Kadane’s algorithm\n  return 0;\n}\nint main() {\n  ios::sync_with_stdio(false);\n  cin.tie(NULL);\n  int k; cin>>k;\n  vector<int> nums(k);\n  for (int i = 0; i < k; i++) cin>>nums[i];\n  cout<<maxSubArray(nums);\n  return 0;\n}"
+    },
+    "tags": ["Array", "Dynamic Programming"],
+    "testCases": [
+      { "input": "1 -2 1", "expectedOutput": "1", "isSample": true },
+      { "input": "5 4 -1 7 8", "expectedOutput": "23", "isSample": true },
+      { "input": "-1 -2 -3", "expectedOutput": "-1", "isSample": true },
+      { "input": "2 -1 2 3 -5 4", "expectedOutput": "6", "isSample": true },
+      { "input": "1 2 3 4 5", "expectedOutput": "15", "isSample": true },
+      { "input": "-2 1 -3 4 -1 2 1 -5 4", "expectedOutput": "6", "isSample": true },
+      { "input": "0 0 0", "expectedOutput": "0", "isSample": true },
+      { "input": "-5 4 3 -2 1", "expectedOutput": "7", "isSample": true }
+    ],
+    "cpuTimeLimit": 2,
+    "memoryLimit": 262144
+  },
+  {
+    "title": "Search in Rotated Sorted Array",
+    "description": "<p>Search target in a rotated sorted array and return its index, or -1 if not found.</p><p><strong>Constraints:</strong></p><ul><li>1 ≤ nums.length ≤ 10⁴</li><li>-10⁴ ≤ nums[i], target ≤ 10⁴</li><li>All values of nums are unique.</li></ul>",
+    "difficulty": "Medium",
+    "defaultLanguage": "java",
+    "starterCode": {
+      "javascript": "// Input: JSON array nums, newline, target integer\nfunction search(nums, target) {\n  // TODO: implement binary search in rotated array\n  return -1;\n}\nrequire('readline').createInterface({ input: process.stdin })\n  .on('line', (l, i) => {\n    if (i===0) this.nums = JSON.parse(l);\n    else console.log(search(this.nums, Number(l)));\n  });",
+      "python": "import json, sys\n\ndef search(nums, target):\n    # TODO: implement binary search in rotated array\n    return -1\n\nlines = sys.stdin.read().splitlines()\nprint(search(json.loads(lines[0]), int(lines[1])))",
+      "java": "import java.util.*;\npublic class Main {\n  public static int search(int[] nums, int target) {\n    // TODO: implement binary search in rotated array\n    return -1;\n  }\n  public static void main(String[] args) {\n    Scanner sc = new Scanner(System.in);\n    String numsLine = sc.nextLine();\n    int target = Integer.parseInt(sc.nextLine());\n    // parse numsLine into int[] nums\n    System.out.println(search(/*nums*/, target));\n    sc.close();\n  }\n}",
+      "cpp": "#include <bits/stdc++.h>\nusing namespace std;\nint search(vector<int>& nums, int target) {\n    // TODO: implement binary search in rotated array\n    return -1;\n}\nint main() {\n    ios::sync_with_stdio(false);\n    cin.tie(NULL);\n    string line;\n    getline(cin, line);\n    // parse line into vector<int> nums\n    int target; cin>>target;\n    cout<<search(/*nums*/, target);\n    return 0;\n}"
+    },
+    "tags": ["Binary Search", "Array"],
+    "testCases": [
+      { "input": "[4,5,6,7,0,1,2]\\n0", "expectedOutput": "4", "isSample": true },
+      { "input": "[4,5,6,7,0,1,2]\\n3", "expectedOutput": "-1", "isSample": true },
+      { "input": "[1]\\n0", "expectedOutput": "-1", "isSample": true },
+      { "input": "[1]\\n1", "expectedOutput": "0", "isSample": true },
+      { "input": "[3,1]\\n1", "expectedOutput": "1", "isSample": true },
+      { "input": "[5,1,3]\\n5", "expectedOutput": "0", "isSample": true },
+      { "input": "[5,1,3]\\n3", "expectedOutput": "2", "isSample": true },
+      { "input": "[2,3,4,5,1]\\n1", "expectedOutput": "4", "isSample": true }
+    ],
+    "cpuTimeLimit": 2,
+    "memoryLimit": 262144
   }
 ]
