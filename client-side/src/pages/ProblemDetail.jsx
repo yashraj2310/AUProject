@@ -5,7 +5,6 @@ import Editor from "@monaco-editor/react"; // Using Monaco Editor
 import { problemService } from "../services/Problem.service";
 import { submissionService } from "../services/Submission.service";
 import { Button, Loader } from "../components/component";
-import SplineButton from "../components/SplineButton/SplineButton"; // Assuming you still want this
 import AIFeedbackModal from "../components/AIFeedbackModal/AIFeedbackModal"; // Assuming you still want this
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { 
