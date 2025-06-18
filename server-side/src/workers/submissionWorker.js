@@ -177,20 +177,40 @@ async function processSubmissionJob(job) {
   let compileOutput = null, stderr = null;
   const results = [];
 
-  // ———————— custom vs full test list logic ————————
-  const tcs =
-    submission.submissionType === "run"
-      ? [
-          { input: submission.customInput || "", expectedOutput: null,
-            isSample: false, isCustom: true, _id: null }
-        ]
-      : problem.testCases.map((tc) => ({
+  let tcs;
+  if (submission.submissionType === "run") {
+    if (submission.customInput && submission.customInput.trim() !== "") {
+      // 1 custom test
+      tcs = [{
+        input:          submission.customInput,
+        expectedOutput: null,
+        isSample:       false,
+        isCustom:       true,
+        _id:            null
+      }];
+    } else {
+      // fallback to sample tests
+      tcs = problem.testCases
+        .filter(tc => tc.isSample)
+        .map(tc => ({
           input:          tc.input,
           expectedOutput: tc.expectedOutput,
-          isSample:       tc.isSample,
+          isSample:       true,
           isCustom:       false,
           _id:            tc._id
         }));
+    }
+  } else {
+    // full suite on “submit”
+    tcs = problem.testCases.map(tc => ({
+      input:          tc.input,
+      expectedOutput: tc.expectedOutput,
+      isSample:       tc.isSample,
+      isCustom:       false,
+      _id:            tc._id
+    }));
+  }
+
 
   for (let i = 0; i < tcs.length; i++) {
     const tc = tcs[i];
