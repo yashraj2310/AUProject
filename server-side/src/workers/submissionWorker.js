@@ -96,7 +96,7 @@ async function executeInDocker(
     });
 
     await container.start();
-    await container.wait();
+    const { StatusCode: exitCode } = await container.wait();
     console.log("[DEBUG] Container has finished execution.");
 
     let timeUsed = 0,
@@ -121,11 +121,17 @@ async function executeInDocker(
       .catch(() => "");
 
     let status;
-    if (compileErr) status = "Compilation Error";
-    else if (userErr) status = "Runtime Error";
-    else if (timeUsed >= timeLimit) status = "Time Limit Exceeded";
-    else if (memUsed > memKB) status = "Memory Limit Exceeded";
-    else status = "Accepted";
+    if (compileErr) {
+      status = "Compilation Error";
+    } else if (exitCode === 137 ) {
+      status = "Time Limit Exceeded";
+    } else if (userErr) {
+      status = "Runtime Error";
+    } else if (memUsed > memKB) {
+      status = "Memory Limit Exceeded";
+    } else {
+      status = "Accepted";
+    }
 
     const output = compileErr || userErr || userOut;
     return { status, time: timeUsed, memory: memUsed, output };
