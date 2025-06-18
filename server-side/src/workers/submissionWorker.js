@@ -21,12 +21,7 @@ const langConfigJson = await fs.readFile(langConfigPath, "utf8");
 const langConfig = JSON.parse(langConfigJson);
 
 // Docker & Redis Setup
-type REDIS_CONN_OPTS = {
-  host: string;
-  port: number;
-  maxRetriesPerRequest: number | null;
-  enableReadyCheck: boolean;
-};
+
 const docker = new Docker({ socketPath: "/var/run/docker.sock" });
 const REDIS_CONN_OPTS = {
   host: process.env.REDIS_HOST || "127.0.0.1",
