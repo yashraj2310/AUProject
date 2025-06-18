@@ -5,6 +5,36 @@ const testCaseSchema = new Schema({
   expectedOutput: { type: String, required: true },
   isSample: { type: Boolean, default: false },
 });
+ const minimalStarters = {
+  javascript: `// Write your solution here
+console.log("Hello, World!");`,
+
+  python: `# Write your solution here
+if __name__ == "__main__":
+    print("Hello, World!")`,
+
+  java: `// Write your solution here
+public class Main {
+  public static void main(String[] args) {
+    System.out.println("Hello, World!");
+  }
+}`,
+
+  cpp: `// Write your solution here
+#include <iostream>
+int main() {
+    std::cout << "Hello, World!" << std::endl;
+    return 0;
+}`,
+
+  c: `// Write your solution here
+#include <stdio.h>
+int main() {
+    printf("Hello, World!\\n");
+    return 0;
+}`
+};
+
 
 const problemSchema = new Schema({
   title: { type: String, required: true, unique: true, trim: true },
@@ -21,15 +51,9 @@ const problemSchema = new Schema({
     trim: true,
   },
   starterCode: { 
-     type: Map,
-     of: String, 
-     default: () => ({ 
-        cpp: "#include <iostream>\n\nint main() {\n    // Your C++ code here\n    std::cout << \"Hello from C++ starter!\" << std::endl;\n    return 0;\n}",
-        java: "public class Main {\n    public static void main(String[] args) {\n        // Your Java code here\n        System.out.println(\"Hello from Java starter!\");\n    }\n}",
-        python: "# Your Python code here\nif __name__ == \"__main__\":\n    print(\"Hello from Python starter!\")",
-        javascript: "// Your JavaScript code here\nfunction main() {\n    console.log(\"Hello from JS starter!\");\n}\nmain();",
-        c: '#include <stdio.h>\n\nint main() {\n    printf("Hello from C starter!\\n");\n    return 0;\n}'
-     })
+    type: Map,
+    of: String,
+    default: () => minimalStarters
   },
   tags: [{ type: String, trim: true }],
   testCases: [testCaseSchema],
