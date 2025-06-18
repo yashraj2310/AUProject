@@ -4,7 +4,6 @@ import { ApiError } from "../utils/ApiError.js";
 import { Submission } from "../models/submission.model.js";
 import { Problem } from "../models/problem.model.js";
 import { submissionProcessingQueue } from "../queues/submissionQueue.js";
-import { getAIHelpFeedback } from "../services/aiFeedback.service.js";
 
 // POST /submissions/execute (Handles both "Run" and "Submit")
 export const executeCode = asyncHandler(async (req, res) => {
@@ -46,9 +45,7 @@ export const executeCode = asyncHandler(async (req, res) => {
   const jobId = `submission-${newSubmission._id}`;
   await submissionProcessingQueue.add(
     "process-submission",
-    {
-      submissionId: newSubmission._id.toString(),
-    },
+    { submissionId: newSubmission._id.toString() },
     { jobId }
   );
 
@@ -68,84 +65,82 @@ export const getSubmissionResult = asyncHandler(async (req, res) => {
   const { submissionId } = req.params;
   const userId = req.user?._id;
 
-  // Fetch the submission, and convert to a plain JS object for modification
   const submissionDocument = await Submission.findById(submissionId).lean();
-
   if (!submissionDocument) {
     throw new ApiError(404, "Submission not found");
   }
-
   if (submissionDocument.userId.toString() !== userId.toString()) {
     throw new ApiError(403, "Not authorized to view this submission");
   }
 
-  // Transform testCaseResults before sending to the client
   let processedTestCaseResults = [];
+
   if (
     submissionDocument.testCaseResults &&
     submissionDocument.testCaseResults.length > 0
   ) {
     processedTestCaseResults = submissionDocument.testCaseResults.map((tc) => {
+      // 1) Sample tests always go here
       if (tc.isSample) {
         return {
-          isSample: tc.isSample,
-          isCustom: tc.isCustom,
-          status: tc.status,
-          time: tc.time,
-          memory: tc.memory,
-          inputSize: tc.inputSize,
-          ...((tc.isSample || tc.isCustom) && { input: tc.input }),
-          ...(tc.isSample &&
-            !tc.isCustom && { expectedOutput: tc.expectedOutput }),
-          actualOutput: tc.actualOutput,
+          isSample:      true,
+          isCustom:      false,
+          status:        tc.status,
+          time:          tc.time,
+          memory:        tc.memory,
+          inputSize:     tc.inputSize,
+          input:         tc.input,
+          expectedOutput: tc.expectedOutput,
+          actualOutput:  tc.actualOutput,
         };
+
+      // 2) Custom-run path: any non-sample when submissionType is "run"
       } else if (submissionDocument.submissionType === "run") {
         return {
-          isCustom: true,
-          status: tc.status,
-          time: tc.time,
-          memory: tc.memory,
-          inputSize: submissionDocument.customInput.length,
-          input: submissionDocument.customInput,
+          isSample:     false,
+          isCustom:     true,
+          status:       tc.status,
+          time:         tc.time,
+          memory:       tc.memory,
+          inputSize:    submissionDocument.customInput.length,
+          input:        submissionDocument.customInput,
           actualOutput: tc.actualOutput,
         };
+
+      // 3) Hidden tests on a "submit" request
       } else {
-        // For hidden test cases in a "submit" type submission
         return {
-          // testCaseId: tc.testCaseId,
-          status: tc.status,
-          time: tc.time,
-          memory: tc.memory,
+          isSample:  false,
+          isCustom:  false,
+          status:    tc.status,
+          time:      tc.time,
+          memory:    tc.memory,
           inputSize: tc.inputSize,
-          isSample: !!tc.isSample,
-          isCustom: !!tc.isCustom,
         };
       }
     });
   }
 
-  // Construct the response object with only necessary fields
   const responseData = {
-    _id: submissionDocument._id,
-    problemId: submissionDocument.problemId,
-    // userId: submissionDocument.userId,
+    _id:                     submissionDocument._id,
+    problemId:               submissionDocument.problemId,
     code:
       submissionDocument.userId.toString() === userId.toString()
         ? submissionDocument.code
         : "// Code hidden for privacy",
-    language: submissionDocument.language,
-    verdict: submissionDocument.verdict,
-    testCaseResults: processedTestCaseResults,
-    customInput: submissionDocument.customInput,
-    submissionType: submissionDocument.submissionType,
-    createdAt: submissionDocument.createdAt,
-    updatedAt: submissionDocument.updatedAt,
-    compileOutput: submissionDocument.compileOutput,
-    executionTime: submissionDocument.executionTime,
-    memoryUsed: submissionDocument.memoryUsed,
+    language:                submissionDocument.language,
+    verdict:                 submissionDocument.verdict,
+    testCaseResults:         processedTestCaseResults,
+    customInput:             submissionDocument.customInput,
+    submissionType:          submissionDocument.submissionType,
+    createdAt:               submissionDocument.createdAt,
+    updatedAt:               submissionDocument.updatedAt,
+    compileOutput:           submissionDocument.compileOutput,
+    executionTime:           submissionDocument.executionTime,
+    memoryUsed:              submissionDocument.memoryUsed,
     estimatedTimeComplexity: submissionDocument.estimatedTimeComplexity,
-    estimatedSpaceComplexity: submissionDocument.estimatedSpaceComplexity,
-    contestId: submissionDocument.contestId, // Include if present
+    estimatedSpaceComplexity:submissionDocument.estimatedSpaceComplexity,
+    contestId:               submissionDocument.contestId,
   };
 
   res
@@ -178,15 +173,9 @@ export const requestAIHelp = asyncHandler(async (req, res) => {
     .limit(5)
     .select("verdict compileOutput stderr createdAt");
 
-  const problemContext = {
-    title: problem.title,
-    description: problem.description,
-    language: language,
-  };
-
   const aiSuggestions = await getAIHelpFeedback(
     code,
-    problemContext,
+    { title: problem.title, description: problem.description, language },
     recentSubmissions
   );
 
