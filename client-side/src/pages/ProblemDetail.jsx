@@ -294,7 +294,7 @@ export default function ProblemDetail() {
               className="w-full p-2 bg-gray-800 border border-gray-600 rounded text-sm text-white placeholder-gray-500 focus:border-blue-500 focus:ring-blue-500"
               value={customInput}
               onChange={(e) => setCustomInput(e.target.value)}
-              placeholder="Enter custom input here to test with 'Run Code' button."
+              placeholder="Enter custom input here "
               disabled={isProcessing || isRequestingAIHelp}
             />
           </div>
