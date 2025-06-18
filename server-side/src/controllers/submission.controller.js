@@ -86,9 +86,8 @@ export const getSubmissionResult = asyncHandler(async (req, res) => {
     submissionDocument.testCaseResults.length > 0
   ) {
     processedTestCaseResults = submissionDocument.testCaseResults.map((tc) => {
-      if (submissionDocument.submissionType === "run" || tc.isSample) {
+      if (tc.isSample) {
         return {
-          // testCaseId: tc.testCaseId,
           isSample: tc.isSample,
           isCustom: tc.isCustom,
           status: tc.status,
@@ -98,6 +97,16 @@ export const getSubmissionResult = asyncHandler(async (req, res) => {
           ...((tc.isSample || tc.isCustom) && { input: tc.input }),
           ...(tc.isSample &&
             !tc.isCustom && { expectedOutput: tc.expectedOutput }),
+          actualOutput: tc.actualOutput,
+        };
+      } else if (submissionDocument.submissionType === "run") {
+        return {
+          isCustom: true,
+          status: tc.status,
+          time: tc.time,
+          memory: tc.memory,
+          inputSize: submissionDocument.customInput.length,
+          input: submissionDocument.customInput,
           actualOutput: tc.actualOutput,
         };
       } else {
