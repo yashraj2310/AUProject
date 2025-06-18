@@ -68,7 +68,7 @@ async function executeInDocker(language, code, stdin, timeLimit, memKB, submissi
       },
       WorkingDir: "/sandbox",
       Cmd: ["sh", "-c", wrappedCommand],
-      User: process.env.DOCKER_CONTAINER_UID || "1001"
+      // User: process.env.DOCKER_CONTAINER_UID || "1001"
     });
 
     await container.start();
