@@ -1,4 +1,3 @@
-// client/src/pages/ProblemDetail.jsx
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
@@ -8,9 +7,9 @@ import { submissionService } from "../services/Submission.service";
 import { Button, Loader } from "../components/component";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { 
-    faListCheck, faClock, faHourglassEnd, faHourglassStart, 
-    faHourglassHalf, faCalendarAlt, faTag, faExclamationCircle
+    faListCheck, faClock, faTag, faBrain
 } from '@fortawesome/free-solid-svg-icons';
+import AIFeedbackModal from "../components/AIFeedbackModal";
 
 // --- Styling Helper Functions ---
 const resultStyles = {
@@ -66,6 +65,7 @@ export default function ProblemDetail() {
   const [pageError, setPageError] = useState("");
   const [loadingProblem, setLoadingProblem] = useState(true);
   const [customInput, setCustomInput] = useState("");
+  // AI Help state
   const [aiFeedback, setAiFeedback] = useState("");
   const [isRequestingAIHelp, setIsRequestingAIHelp] = useState(false);
   const [showAIModal, setShowAIModal] = useState(false);
@@ -218,7 +218,11 @@ export default function ProblemDetail() {
   };
 
   if (loadingAuth || loadingProblem) {
-    return <div className="p-6 text-center text-gray-400">Loading problem and auth...</div>;
+    return (
+      <div className="flex justify-center items-center min-h-screen dark:bg-gray-900">
+        <Loader />
+      </div>
+    );
   }
   if (pageError && !problem) {
     return <div className="p-6 text-red-500 text-center">{pageError}</div>;
@@ -229,9 +233,16 @@ export default function ProblemDetail() {
 
   return (
     <div className="p-4 md:p-6 max-w-full dark:bg-gray-900 dark:text-gray-100 min-h-screen relative">
-      <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 ${showAIModal ? 'blur-md filter brightness-50 pointer-events-none' : ''}`}>
+      <AIFeedbackModal
+        show={showAIModal}
+        isLoading={isRequestingAIHelp}
+        feedback={aiFeedback}
+        onClose={() => setShowAIModal(false)}
+      />
+      
+      <div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 transition-all duration-300 ${showAIModal ? 'blur-md filter brightness-50 pointer-events-none' : ''}`}>
         {/* ——— Left: Description ——— */}
-        <div className="prose dark:prose-invert max-w-none md:pr-4 md:overflow-y-auto md:max-h-[calc(100vh-100px)] custom-scrollbar">
+        <div className="prose dark:prose-invert max-w-none md:pr-4 lg:overflow-y-auto lg:max-h-[calc(100vh-100px)] custom-scrollbar">
           <h1 className="text-2xl md:text-3xl font-bold mb-3">{problem.title}</h1>
           <div className="flex items-center gap-x-3 text-sm mb-3">
             <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border ${getDifficultyColor(problem.difficulty)} capitalize`}>
@@ -272,7 +283,7 @@ export default function ProblemDetail() {
         </div>
 
         {/* ——— Right: Editor & Controls ——— */}
-        <div className="flex flex-col md:max-h-[calc(100vh-100px)]">
+        <div className="flex flex-col lg:max-h-[calc(100vh-100px)]">
           <div className="mb-3">
             <label className="block text-sm font-medium text-gray-300 mb-1">Language:</label>
             <select
@@ -319,16 +330,24 @@ export default function ProblemDetail() {
             />
           </div>
 
-          <div className="flex gap-3 mb-4">
+          <div className="flex flex-wrap gap-3 mb-4">
             <Button
               onClick={() => handleExecuteCode('run')}
               disabled={isProcessing || isRequestingAIHelp}
               content={isProcessing && currentSubmission?.submissionType==='run' ? "Running..." : "Run Code"}
+              className="bg-gray-600 hover:bg-gray-500"
             />
             <Button
               onClick={() => handleExecuteCode('submit')}
               disabled={isProcessing || isRequestingAIHelp}
               content={isProcessing && currentSubmission?.submissionType==='submit' ? "Submitting..." : "Submit Code"}
+            />
+            <Button
+              onClick={handleAIHelpMe}
+              disabled={isProcessing || isRequestingAIHelp}
+              content={isRequestingAIHelp ? "Thinking..." : "Get AI Help"}
+              className="bg-teal-600 hover:bg-teal-700"
+              icon={<FontAwesomeIcon icon={faBrain} className="mr-2"/>}
             />
           </div>
 
@@ -412,8 +431,6 @@ export default function ProblemDetail() {
           )}
         </div>
       </div>
-
-
     </div>
   );
 }
