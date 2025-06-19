@@ -4,11 +4,16 @@ import { Link } from 'react-router-dom';
 
 export default function Microlesson({ problemId }) {
   const [lesson, setLesson] = useState(null);
-  useEffect(() => {
-    fetchLesson(problemId)
-      .then(res => res.data && setLesson(res.data))
-      .catch(() => {});
-  }, [problemId]);
+ useEffect(() => {
+   fetchLesson(problemId)
+     .then(res => {
+       const body = res.data;
+       if (body?.statusCode === 200 && body.data) {
+         setLesson(body.data);
+       }
+     })
+     .catch(() => {});
+ }, [problemId]);
 
   if (!lesson) return null;
 
