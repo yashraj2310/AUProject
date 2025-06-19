@@ -24,4 +24,9 @@ export const problemService = {
   getAllUniqueTags: () => {
     return axios.get(`${PROBLEMS_API_URL}/tags`, { withCredentials: true });
   },
+   fetchLesson: (problemId) =>
+   axios.get(
+     `${API_SERVER_BASE}/api/problems/${problemId}/lesson`,
+     { withCredentials: true }
+   ),
 };

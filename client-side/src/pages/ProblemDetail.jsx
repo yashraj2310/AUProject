@@ -10,6 +10,7 @@ import {
     faListCheck, faClock, faTag, faBrain
 } from '@fortawesome/free-solid-svg-icons';
 import AIFeedbackModal from "../components/AIFeedbackModal";
+import Microlesson from "../components/Microlesson";
 
 // --- Styling Helper Functions ---
 const resultStyles = {
@@ -280,6 +281,7 @@ export default function ProblemDetail() {
               ))}
             </>
           )}
+            <Microlesson problemId={problemIdToUse} />
         </div>
 
         {/* ——— Right: Editor & Controls ——— */}

@@ -11,7 +11,7 @@ import { execSync } from "child_process";
 import connectDB from "../database/db.js";
 import { Submission } from "../models/submission.model.js";
 import { Problem } from "../models/problem.model.js";
-
+import { generateMicrolesson } from '../services/aiLesson.service.js';
 // Load ENV and Config
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
