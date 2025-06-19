@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button } from '../component';
+import { Button } from './component';
 
 export default function AIFeedbackModal({ show, feedback, isLoading, onClose }) {
   if (!show) return null;
