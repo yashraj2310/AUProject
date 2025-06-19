@@ -4,6 +4,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { Submission } from "../models/submission.model.js";
 import { Problem } from "../models/problem.model.js";
 import { submissionProcessingQueue } from "../queues/submissionQueue.js";
+import { getAIHelpFeedback } from "../services/aiFeedback.service.js";
 
 // POST /submissions/execute (Handles both "Run" and "Submit")
 export const executeCode = asyncHandler(async (req, res) => {
