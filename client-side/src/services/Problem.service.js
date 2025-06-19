@@ -28,7 +28,7 @@ export const problemService = {
 };
 export function fetchLesson(problemId) {
   return axios.get(
-    `${API_SERVER_BASE}/api/problems/${problemId}/lesson`,
+    `${PROBLEMS_API_URL}/${problemId}/lesson`,
     { withCredentials: true }
   );
-};
+}

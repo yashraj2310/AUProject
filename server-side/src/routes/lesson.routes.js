@@ -1,8 +1,9 @@
-import express from 'express';
+import { Router } from 'express';
 import { getLesson } from '../controllers/lesson.controller.js';
-const router = express.Router();
 
-// GET /api/problems/:problemId/lesson
-router.get('/problems/:problemId/lesson', getLesson);
+const router = Router();
+
+// GET /problems/:problemId/lesson
+router.get('/:problemId/lesson', getLesson);
 
 export default router;

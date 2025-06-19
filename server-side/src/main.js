@@ -59,8 +59,7 @@ async function startServer() {
 
   // Protected
   app.use('/submissions', verifyJwt, submissionRouter);
-  app.use('/api', verifyJwt, lessonRoutes);
-
+ app.use('/problems', verifyJwt, lessonRoutes);
 
   // 404
   app.use((req, res) => res.status(404).json({ message: 'Not Found' }));
