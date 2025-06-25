@@ -17,26 +17,26 @@ Cohort is a full-stack online judge platform designed for competitive programmer
 * **Contest System (MVP):**  
   * List and view details of contests (Upcoming, Running, Ended).  
   * Participate in running contests by submitting solutions to contest problems.  
-  * Basic leaderboard display based on points per problem.  
+  * Basic leaderboard display based on points per problem on the running contest.  
 * **AI-Powered Coding Assistance:**  
-  * “AI, Help Me!” feature.  
+  * “Get AI Help” feature.  
   * Integration with LLM APIs (OpenAI/Gemini) to provide contextual feedback on user's code, problem approach, and recent errors.  
   * Suggestions displayed in a modal overlay.  
-* **Complexity Estimation (Experimental):** For “Accepted” submissions, attempts to estimate Time and Space Complexity based on performance across test cases.
+
 
 ## Tech Stack
 
 * **Frontend:** React (Vite), Tailwind CSS, Redux Toolkit, Monaco Editor  
-* **Backend:** Node.js, Express.js (containerized via `Dockerfile.api`)  
+* **Backend:** Node.js, Express.js (containerized via `Dockerfile`)  
 * **Database:** MongoDB (with Mongoose ODM)  
 * **Job Queue:** BullMQ, Redis  
 * **Execution Engine:** Docker (two images):  
-  * **API Server Image** – runs the Express endpoint (`Dockerfile.api`)  
+  * **API Server Image** – runs the Express endpoint (`Dockerfile`)  
   * **Worker Image** – runs the submission processor with all language runtimes (`Dockerfile.worker`)  
 * **AI Integration:** OpenAI API / Google Gemini API  
 * **Deployment:**  
   * Frontend: Netlify (Planned/Actual)  
-  * Backend/Workers: AWS EC2/ECS (using the two container images)  
+  * Backend/Workers: AWS EC2 (using the two container images)  
   * DB/Cache: MongoDB Atlas, Managed Redis
 
 ## Architecture Overview
@@ -101,11 +101,10 @@ Cohort utilizes a decoupled-inspired architecture to handle code submissions asy
    SMTP_FROM=<your SMTP from address>
    REDIS_HOST=<your Redis host>
    REDIS_PORT=<your Redis port>
-   DOCKER_CONTAINER_UID=<container user ID>
+
    WORKER_CONCURRENCY=<number of worker threads>
-   PORT=<server port>
-   NODE_ENV=<environment>
-VITE_SERVER_ENDPOINT=<your API server URL>
+
+2.VITE_SERVER_ENDPOINT=<your API server URL>
 # Build the API server image
 docker build -t cohort-api:latest -f server-side/Dockerfile.api server-side
 
