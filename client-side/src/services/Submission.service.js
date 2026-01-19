@@ -14,6 +14,11 @@ const getAuthConfig = () => {
 };
 
 export const submissionService = {
+  estimateComplexity: async (payload) => {
+  const res = await api.post("/ml/estimate", payload);
+  return res.data;
+},
+
   executeCode: async (payload) => {
     try {
       const response = await axios.post(

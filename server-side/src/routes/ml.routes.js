@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { estimateComplexity } from "../controllers/ml.controller.js";
-import { verifyJWT } from "../middlewares/auth.middleware.js";
+import verifyJwt from "../middlewares/verifyJwt.js";
 
 const router = Router();
 
-router.post("/estimate", verifyJWT, estimateComplexity);
+router.post("/estimate", verifyJwt, estimateComplexity);
 
 export default router;
