@@ -12,6 +12,7 @@ import problemRouter from './routes/problem.routes.js';
 import submissionRouter from './routes/submission.routes.js'; 
 import contestRouter from './routes/contest.routes.js'; 
 import lessonRoutes from './routes/lesson.routes.js';
+import mlRoutes from "./routes/ml.routes.js";
 dotenv.config();
 
 async function startServer() {
@@ -60,7 +61,7 @@ async function startServer() {
   // Protected
   app.use('/submissions', verifyJwt, submissionRouter);
  app.use('/problems', verifyJwt, lessonRoutes);
-
+app.use("/ml", mlRoutes);
   // 404
   app.use((req, res) => res.status(404).json({ message: 'Not Found' }));
 
