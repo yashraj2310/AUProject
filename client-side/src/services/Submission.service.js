@@ -5,7 +5,9 @@ const API_SERVER_BASE = import.meta.env.VITE_SERVER_ENDPOINT || 'http://localhos
 const API_VERSION_PREFIX = ''; 
 
 const SUBMISSIONS_API_URL = `${API_SERVER_BASE}${API_VERSION_PREFIX}/submissions`; 
-
+const ML_API_BASE =
+  import.meta.env.VITE_ML_ENDPOINT ||
+  import.meta.env.VITE_SERVER_ENDPOINT;
 const getAuthConfig = () => {
     const config = {
         withCredentials: true
@@ -15,18 +17,21 @@ const getAuthConfig = () => {
 
 export const submissionService = {
  estimateComplexity: async (payload) => {
-  try {
-    const response = await axios.post(
-      `${API_SERVER_BASE}/ml/estimate`,
-      payload,
-      getAuthConfig()
-    );
-    return response.data;
-  } catch (error) {
-    console.error("Error in submissionService.estimateComplexity:", error.response?.data || error.message);
-    throw error;
-  }
-},
+    try {
+      const response = await axios.post(
+        `${ML_API_BASE}/ml/estimate`,
+        payload,
+        getAuthConfig()
+      );
+      return response.data;
+    } catch (error) {
+      console.error(
+        "Error in submissionService.estimateComplexity:",
+        error.response?.data || error.message
+      );
+      throw error;
+    }
+  },
 
 
   executeCode: async (payload) => {
