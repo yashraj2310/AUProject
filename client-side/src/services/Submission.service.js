@@ -14,10 +14,20 @@ const getAuthConfig = () => {
 };
 
 export const submissionService = {
-  estimateComplexity: async (payload) => {
-  const res = await axios.post("/ml/estimate", payload);
-  return res.data;
+ estimateComplexity: async (payload) => {
+  try {
+    const response = await axios.post(
+      `${API_SERVER_BASE}/ml/estimate`,
+      payload,
+      getAuthConfig()
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error in submissionService.estimateComplexity:", error.response?.data || error.message);
+    throw error;
+  }
 },
+
 
   executeCode: async (payload) => {
     try {
