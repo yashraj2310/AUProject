@@ -1,0 +1,56 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  cohort-api:
+    build:
+      context: ./server-side
+      dockerfile: Dockerfile
+    container_name: cohort-api
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./server-side/.env
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      # if you call ML from Node:
+      - ML_SERVICE_URL=http://ml-service:8000
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  cohort-worker:
+    build:
+      context: ./server-side
+      dockerfile: Dockerfile.worker
+    container_name: cohort-worker
+    env_file:
+      - ./server-side/.env
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - ML_SERVICE_URL=http://ml-service:8000
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ml-service:
+    build:
+      context: ./ml-service
+      dockerfile: Dockerfile
+    container_name: ml-service
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
