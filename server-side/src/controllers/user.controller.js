@@ -15,7 +15,7 @@ const cookieOpts = {
   // secure: false, 
   // sameSite:'lax',
   secure:true,
-  domain:   '.cohortarena.xyz',
+  domain:   'cohortarena.xyz',
 
   path: '/', 
   maxAge: 24 * 60 * 60 * 1000, // 1 day
